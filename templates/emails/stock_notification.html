@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ subscription.stock_ticker }} Stock Update</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+            padding: 30px 20px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .header .subtitle {
+            margin: 10px 0 0 0;
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .stock-info {
+            background-color: #f8f9ff;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 25px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .stock-ticker {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4f46e5;
+            margin-bottom: 10px;
+        }
+        .stock-price {
+            font-size: 36px;
+            font-weight: bold;
+            color: #059669;
+            margin-bottom: 15px;
+        }
+        .price-label {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .custom-message {
+            background-color: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin: 20px 0;
+            font-style: italic;
+        }
+        .notification-type {
+            display: inline-block;
+            background-color: #e0e7ff;
+            color: #3730a3;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+        .footer {
+            background-color: #f9fafb;
+            padding: 20px;
+            text-align: center;
+            border-top: 1px solid #e5e7eb;
+            font-size: 14px;
+            color: #6b7280;
+        }
+        .footer a {
+            color: #4f46e5;
+            text-decoration: none;
+        }
+        .disclaimer {
+            font-size: 12px;
+            color: #9ca3af;
+            margin-top: 15px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{{ site_name }}</h1>
+            <div class="subtitle">Stock Price Notification</div>
+        </div>
+        
+        <div class="content">
+            <div class="notification-type">{{ notification_type|title }} Update</div>
+            
+            <p>Hello,</p>
+            
+            <p>Here's your latest stock update for <strong>{{ subscription.stock_ticker }}</strong>:</p>
+            
+            <div class="stock-info">
+                <div class="stock-ticker">{{ subscription.stock_ticker }}</div>
+                {% if current_price %}
+                    <div class="stock-price">${{ current_price }}</div>
+                    <div class="price-label">Current Price</div>
+                {% else %}
+                    <div class="stock-price">Price Unavailable</div>
+                    <div class="price-label">Please check your financial platform for current pricing</div>
+                {% endif %}
+            </div>
+            
+            {% if custom_message %}
+                <div class="custom-message">
+                    <strong>Note:</strong> {{ custom_message }}
+                </div>
+            {% endif %}
+            
+            {% if notification_type == 'manual' %}
+                <p>This notification was sent manually at your request.</p>
+            {% else %}
+                <p>This is your scheduled stock update notification.</p>
+            {% endif %}
+            
+            <p>Stay informed and make smart investment decisions!</p>
+        </div>
+        
+        <div class="footer">
+            <p>You're receiving this because you subscribed to updates for {{ subscription.stock_ticker }}.</p>
+            <p>This email was sent to: <strong>{{ subscription.email }}</strong></p>
+            
+            <div class="disclaimer">
+                <strong>Disclaimer:</strong> This information is for informational purposes only and should not be considered as financial advice. 
+                Stock prices are subject to market volatility and may not reflect real-time values. 
+                Please consult with a financial advisor before making investment decisions.
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -35,6 +35,7 @@ THIRD_PARTY_APPS = [
 
 LOCAL_APPS = [
     'authentication',
+    'subscriptions',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -196,6 +197,14 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 
 # Stock API and AI settings
 OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
+
+# Stock data provider API keys (optional - fallback to mock data for development)
+ALPHA_VANTAGE_API_KEY = config('ALPHA_VANTAGE_API_KEY', default=None)
+FINNHUB_API_KEY = config('FINNHUB_API_KEY', default=None)
+
+# Email notification settings
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@stockmonitor.com')
+SITE_NAME = config('SITE_NAME', default='Stock Monitor')
 
 # Security settings for production
 if not DEBUG:

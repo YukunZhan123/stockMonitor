@@ -1,0 +1,27 @@
+{{ site_name }} - Stock Price Notification
+
+{{ notification_type|upper }} UPDATE
+
+Hello,
+
+Here's your latest stock update for {{ subscription.stock_ticker }}:
+
+Stock: {{ subscription.stock_ticker }}
+{% if current_price %}Current Price: ${{ current_price }}{% else %}Price: Currently unavailable{% endif %}
+
+{% if custom_message %}
+Note: {{ custom_message }}
+{% endif %}
+
+{% if notification_type == 'manual' %}This notification was sent manually at your request.{% else %}This is your scheduled stock update notification.{% endif %}
+
+Stay informed and make smart investment decisions!
+
+---
+
+You're receiving this because you subscribed to updates for {{ subscription.stock_ticker }}.
+This email was sent to: {{ subscription.email }}
+
+DISCLAIMER: This information is for informational purposes only and should not be considered as financial advice. Stock prices are subject to market volatility and may not reflect real-time values. Please consult with a financial advisor before making investment decisions.
+
+{{ site_name }}
