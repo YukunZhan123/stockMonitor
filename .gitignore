@@ -54,3 +54,11 @@ coverage.xml
 
 # pytest
 .pytest_cache/
+
+CROSS_ORIGIN_COOKIES.md
+db.sqlite3
+DEPLOYMENT.md
+MODERN_DESIGN_SYSTEM.md
+PRODUCTION_READY.md
+SECURITY.md
+cookies.txt

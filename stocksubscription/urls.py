@@ -6,7 +6,8 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    # API routes will be added here
+    path('api/auth/', include('authentication.urls')),
+    # More API routes will be added here
 ]
 
 # Serve static and media files in development
