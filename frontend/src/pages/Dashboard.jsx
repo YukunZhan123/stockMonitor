@@ -5,54 +5,82 @@ import TestError from "../components/TestError"; // TEMPORARY FOR TESTING
 export default function Dashboard({ user, onLogout }) {
   const [subscriptions, setSubscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [showAddForm, setShowAddForm] = useState(false);
   const itemsPerPage = 9; // 3x3 grid
 
-  // Load subscriptions from API
+  // Load subscriptions from API with pagination support
   useEffect(() => {
     const loadSubscriptions = async () => {
+      setLoading(true);
+      setError(null);
+      
       try {
-        const response = await subscriptionAPI.getSubscriptions();
-        setSubscriptions(response.data.results || response.data);
+        const params = {
+          page: currentPage,
+          page_size: itemsPerPage
+        };
+        
+        const response = await subscriptionAPI.getSubscriptions(params);
+        
+        // Handle both paginated and non-paginated responses
+        if (response.data.results) {
+          // Paginated response from DRF
+          setSubscriptions(response.data.results);
+          setTotalCount(response.data.count || 0);
+        } else {
+          // Non-paginated response (fallback)
+          setSubscriptions(response.data);
+          setTotalCount(response.data.length);
+        }
       } catch (error) {
-        // Error is already logged by API interceptor, just handle user feedback
-        console.error('Failed to load subscriptions');
+        // Error is already logged by API interceptor
+        setError('Failed to load subscriptions. Please try again.');
+        setSubscriptions([]);
+        setTotalCount(0);
       } finally {
         setLoading(false);
       }
     };
 
     loadSubscriptions();
-  }, []);
+  }, [currentPage]); // Reload when page changes
 
-  // Pagination logic
-  const totalPages = Math.ceil(subscriptions.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentSubscriptions = subscriptions.slice(startIndex, startIndex + itemsPerPage);
+  // Pagination logic - use server-side pagination
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
+  const currentSubscriptions = subscriptions; // Already paginated by server
 
   const handleAddSubscription = (newSubscription) => {
+    // Add new subscription to the beginning of the list
     setSubscriptions((prev) => [newSubscription, ...prev]);
+    setTotalCount((prev) => prev + 1);
     setShowAddForm(false);
+    setError(null); // Clear any previous errors
   };
 
   const handleDeleteSubscription = async (id) => {
     try {
       await subscriptionAPI.deleteSubscription(id);
       setSubscriptions((prev) => prev.filter((sub) => sub.id !== id));
+      setTotalCount((prev) => prev - 1);
+      setError(null); // Clear any previous errors
     } catch (error) {
       // Error is already logged by API interceptor, just handle user feedback
-      console.error('Failed to delete subscription');
+      setError('Failed to delete subscription. Please try again.');
     }
   };
 
   const handleSendNow = async (subscription) => {
     try {
       await subscriptionAPI.sendNow(subscription.id);
+      // Clear any previous errors on success
+      setError(null);
       // Could add success notification here
     } catch (error) {
       // Error is already logged by API interceptor, just handle user feedback
-      console.error('Failed to send subscription');
+      setError('Failed to send notification. Please try again.');
     }
   };
 
@@ -98,6 +126,13 @@ export default function Dashboard({ user, onLogout }) {
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* TEMPORARY: Test Error Boundary */}
         <TestError />
+        
+        {/* Error Display */}
+        {error && (
+          <div className="mb-6 rounded-md bg-red-500/10 border border-red-500/20 px-4 py-3">
+            <p className="text-sm text-red-300">{error}</p>
+          </div>
+        )}
         
         {loading ? (
           <div className="flex items-center justify-center py-12">
@@ -208,7 +243,7 @@ function StockCard({ subscription, onDelete, onSendNow }) {
         <div>
           <h3 className="text-lg font-bold text-white">{subscription.stock_ticker}</h3>
           <p className="text-2xl font-semibold text-indigo-400">
-            {formatPrice(subscription.stock_price || 0)}
+            {subscription.price_display || 'Loading...'}
           </p>
         </div>
         <div className="flex space-x-2">

@@ -169,8 +169,8 @@ export const authAPI = {
 
 // Subscription API endpoints
 export const subscriptionAPI = {
-  // Get all subscriptions for current user
-  getSubscriptions: () => api.get("/subscriptions/"),
+  // Get all subscriptions for current user with pagination support
+  getSubscriptions: (params = {}) => api.get("/subscriptions/", { params }),
 
   // Create new subscription
   createSubscription: (subscriptionData) => api.post("/subscriptions/", subscriptionData),

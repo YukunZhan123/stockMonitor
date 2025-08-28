@@ -160,7 +160,7 @@ REST_FRAMEWORK = {
 # CORS settings for React frontend with secure cookies
 CORS_ALLOWED_ORIGINS = config(
     'CORS_ALLOWED_ORIGINS', 
-    default='http://localhost:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5176,http://127.0.0.1:5176',
+    default='http://localhost:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5176,http://127.0.0.1:5176,http://localhost:5177,http://127.0.0.1:5177',
     cast=lambda v: [s.strip() for s in v.split(',')]
 )
 
@@ -170,7 +170,7 @@ CORS_ALLOW_ALL_ORIGINS = DEBUG  # Only allow all origins in development
 # CSRF Configuration for API
 CSRF_TRUSTED_ORIGINS = config(
     'CSRF_TRUSTED_ORIGINS', 
-    default='http://localhost:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5176,http://127.0.0.1:5176',
+    default='http://localhost:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5176,http://127.0.0.1:5176,http://localhost:5177,http://127.0.0.1:5177',
     cast=lambda v: [s.strip() for s in v.split(',')]
 )
 
@@ -187,13 +187,16 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 
-# Email configuration
-EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
-EMAIL_HOST = config('EMAIL_HOST', default='')
-EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
-EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+# Email configuration - Gmail SMTP
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+
+# Fail silently in development if email credentials not provided
+EMAIL_FAIL_SILENTLY = not config('EMAIL_HOST_USER', default='')
 
 # Stock API and AI settings
 OPENAI_API_KEY = config('OPENAI_API_KEY', default='')

@@ -5,7 +5,9 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils import timezone
-from typing import Optional
+from django.core.cache import cache
+from typing import Optional, Dict, Any
+import json
 
 from .models import StockSubscription, NotificationLog
 
@@ -14,110 +16,86 @@ logger = logging.getLogger('subscriptions')
 
 class StockDataService:
     """
-    High-level purpose: Fetch real-time stock data from external APIs
-    - Support multiple stock data providers with fallbacks
-    - Cache stock prices to reduce API calls
-    - Handle API rate limits and errors gracefully
+    Simple Yahoo Finance API integration
     """
     
     def __init__(self):
-        self.timeout = 10  # seconds
         self.cache_duration = 300  # 5 minutes
-        
-        # API configuration - in production, use environment variables
-        self.providers = [
-            {
-                'name': 'Alpha Vantage',
-                'url': 'https://www.alphavantage.co/query',
-                'api_key': getattr(settings, 'ALPHA_VANTAGE_API_KEY', None),
-                'enabled': hasattr(settings, 'ALPHA_VANTAGE_API_KEY')
-            },
-            {
-                'name': 'Finnhub',
-                'url': 'https://finnhub.io/api/v1/quote',
-                'api_key': getattr(settings, 'FINNHUB_API_KEY', None),
-                'enabled': hasattr(settings, 'FINNHUB_API_KEY')
-            }
-        ]
     
     def get_current_price(self, ticker: str) -> Optional[Decimal]:
         """
-        Get current stock price with fallback providers
-        Returns None if all providers fail
+        Get current stock price from Yahoo Finance API
         """
         ticker = ticker.upper().strip()
         
-        for provider in self.providers:
-            if not provider['enabled']:
-                continue
+        # Check cache first
+        cache_key = f"stock_price_{ticker}"
+        cached_price = cache.get(cache_key)
+        if cached_price is not None:
+            logger.info(f"Got cached price for {ticker}: ${cached_price}")
+            return Decimal(str(cached_price))
+        
+        try:
+            # Use Yahoo Finance quote API directly
+            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
+            
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+            
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            if 'chart' in data and 'result' in data['chart'] and data['chart']['result']:
+                result = data['chart']['result'][0]
                 
-            try:
-                price = self._fetch_from_provider(ticker, provider)
-                if price is not None:
-                    logger.info(f"Got price for {ticker} from {provider['name']}: ${price}")
-                    return price
-            except Exception as e:
-                logger.warning(f"Provider {provider['name']} failed for {ticker}: {str(e)}")
-                continue
-        
-        # Fallback to mock data for development/testing
-        logger.warning(f"All providers failed for {ticker}, using mock data")
-        return self._get_mock_price(ticker)
-    
-    def _fetch_from_provider(self, ticker: str, provider: dict) -> Optional[Decimal]:
-        """Fetch price from specific provider"""
-        if provider['name'] == 'Alpha Vantage':
-            return self._fetch_alpha_vantage(ticker, provider)
-        elif provider['name'] == 'Finnhub':
-            return self._fetch_finnhub(ticker, provider)
-        return None
-    
-    def _fetch_alpha_vantage(self, ticker: str, provider: dict) -> Optional[Decimal]:
-        """Fetch from Alpha Vantage API"""
-        params = {
-            'function': 'GLOBAL_QUOTE',
-            'symbol': ticker,
-            'apikey': provider['api_key']
-        }
-        
-        response = requests.get(provider['url'], params=params, timeout=self.timeout)
-        response.raise_for_status()
-        
-        data = response.json()
-        
-        # Alpha Vantage response format
-        if 'Global Quote' in data:
-            price_str = data['Global Quote'].get('05. price')
-            if price_str:
-                return Decimal(price_str)
+                # Get the latest price
+                if 'meta' in result and 'regularMarketPrice' in result['meta']:
+                    price = result['meta']['regularMarketPrice']
+                    if price and price > 0:
+                        price_decimal = Decimal(str(price))
+                        # Cache for 5 minutes
+                        cache.set(cache_key, float(price_decimal), self.cache_duration)
+                        logger.info(f"Got price for {ticker}: ${price_decimal}")
+                        return price_decimal
+                        
+        except Exception as e:
+            logger.warning(f"Yahoo Finance API failed for {ticker}: {str(e)}")
         
         return None
     
-    def _fetch_finnhub(self, ticker: str, provider: dict) -> Optional[Decimal]:
-        """Fetch from Finnhub API"""
-        params = {
-            'symbol': ticker,
-            'token': provider['api_key']
-        }
+    def validate_ticker(self, ticker: str) -> Dict[str, Any]:
+        """
+        Simple ticker validation - just try to get a price
+        """
+        ticker = ticker.upper().strip()
         
-        response = requests.get(provider['url'], params=params, timeout=self.timeout)
-        response.raise_for_status()
+        # Check cache first
+        cache_key = f"ticker_validation_{ticker}"
+        cached_result = cache.get(cache_key)
+        if cached_result is not None:
+            return cached_result
         
-        data = response.json()
+        # Just try to get the price - if it works, ticker is valid
+        price = self.get_current_price(ticker)
         
-        # Finnhub response format
-        current_price = data.get('c')  # Current price
-        if current_price and current_price > 0:
-            return Decimal(str(current_price))
+        if price:
+            result = {
+                'valid': True,
+                'symbol': ticker,
+                'price': float(price)
+            }
+        else:
+            result = {
+                'valid': False,
+                'error': 'Invalid ticker symbol'
+            }
         
-        return None
-    
-    def _get_mock_price(self, ticker: str) -> Decimal:
-        """Generate mock price for development/testing"""
-        # Simple hash-based mock prices for consistent testing
-        hash_val = hash(ticker) % 1000
-        base_price = 50 + (hash_val / 10)  # Price between $50-$150
-        return Decimal(f"{base_price:.2f}")
+        # Cache result for 15 minutes
+        cache.set(cache_key, result, self.cache_duration * 3)
+        return result
 
 
 class NotificationService:

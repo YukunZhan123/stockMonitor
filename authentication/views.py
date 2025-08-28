@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view, permission_classes, throttle_cla
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
-from django.contrib.auth import login
+from django.contrib.auth import login, logout
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.cache import never_cache
@@ -100,6 +100,9 @@ def register_view(request):
             user = serializer.save()
             access_token, refresh_token = generate_jwt_tokens(user)
             
+            # Log user into Django session for SessionAuthentication
+            login(request, user)
+            
             logger.info(f"User registered successfully: {user.email}")
             
             response = Response({
@@ -171,6 +174,9 @@ def login_view(request):
         try:
             user = serializer.validated_data['user']
             access_token, refresh_token = generate_jwt_tokens(user)
+            
+            # Log user into Django session for SessionAuthentication
+            login(request, user)
             
             logger.info(f"User login successful: {user.email} from IP: {client_ip}")
             
@@ -295,6 +301,9 @@ def logout_view(request):
     - Clear authentication cookies
     - Invalidate session
     """
+    # Logout from Django session
+    logout(request)
+    
     response = Response({
         'message': 'Logout successful'
     }, status=status.HTTP_200_OK)
