@@ -9,6 +9,12 @@ Here's your latest stock update for {{ subscription.stock_ticker }}:
 Stock: {{ subscription.stock_ticker }}
 {% if current_price %}Current Price: ${{ current_price }}{% else %}Price: Currently unavailable{% endif %}
 
+{% if ai_recommendation %}
+AI INVESTMENT ANALYSIS:
+Recommendation: {{ ai_recommendation.recommendation }}
+Reasoning: {{ ai_recommendation.reason }}
+{% endif %}
+
 {% if custom_message %}
 Note: {{ custom_message }}
 {% endif %}
