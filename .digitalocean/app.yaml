@@ -6,7 +6,7 @@ services:
     github:
       repo: YukunZhan123/stockMonitor
       branch: main
-    run_command: gunicorn --bind 0.0.0.0:8080 --workers 2 stocksubscription.wsgi
+    run_command: gunicorn stocksubscription.wsgi --worker-tmp-dir /dev/shm --bind 0.0.0.0:8080 --workers 2
     environment_slug: python
     instance_count: 1
     instance_size_slug: basic-xxs
@@ -114,3 +114,13 @@ jobs:
     environment_slug: python
     instance_size_slug: basic-xxs
     kind: PRE_DEPLOY
+    envs:
+      - key: SECRET_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: DEBUG
+        value: "False"
+        scope: RUN_AND_BUILD_TIME
+      - key: DJANGO_SETTINGS_MODULE
+        value: "stocksubscription.settings"
+        scope: RUN_AND_BUILD_TIME
