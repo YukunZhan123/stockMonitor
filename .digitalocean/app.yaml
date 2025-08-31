@@ -4,7 +4,7 @@ services:
   - name: api
     source_dir: /
     github:
-      repo: your-username/your-repo-name
+      repo: YukunZhan123/stockMonitor
       branch: main
     run_command: |
       python manage.py collectstatic --noinput
@@ -38,7 +38,7 @@ services:
   - name: web
     source_dir: /frontend
     github:
-      repo: your-username/your-repo-name
+      repo: YukunZhan123/stockMonitor
       branch: main
     build_command: |
       npm ci
@@ -57,7 +57,7 @@ services:
   - name: worker
     source_dir: /
     github:
-      repo: your-username/your-repo-name
+      repo: YukunZhan123/stockMonitor
       branch: main
     run_command: celery -A stocksubscription worker --loglevel=info
     environment_slug: python
@@ -68,7 +68,7 @@ services:
   - name: scheduler
     source_dir: /
     github:
-      repo: your-username/your-repo-name
+      repo: YukunZhan123/stockMonitor
       branch: main
     run_command: celery -A stocksubscription beat --loglevel=info
     environment_slug: python
@@ -86,7 +86,7 @@ jobs:
   - name: migrate
     source_dir: /
     github:
-      repo: your-username/your-repo-name
+      repo: YukunZhan123/stockMonitor
       branch: main
     run_command: python manage.py migrate
     environment_slug: python
