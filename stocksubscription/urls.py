@@ -1,11 +1,10 @@
-"""stocksubscription URL Configuration"""
-from django.contrib import admin
+"""stocksubscription URL Configuration - Ultra-minimal JWT-only setup"""
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+# No Django admin - using custom React admin interface at /admin
 urlpatterns = [
-    path('admin/', admin.site.urls),
     path('api/auth/', include('authentication.urls')),
     path('api/subscriptions/', include('subscriptions.urls')),
 ]

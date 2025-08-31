@@ -15,16 +15,14 @@ SECRET_KEY = config('SECRET_KEY')  # Remove default - force production to set th
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)  # Default to False for security
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=lambda v: [s.strip() for s in v.split(',')])
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,testserver', cast=lambda v: [s.strip() for s in v.split(',')])
 
 # Application definition
+# Ultra-minimal Django apps (no admin, no sessions, no messages)
 DJANGO_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
+    'django.contrib.auth',           # User model only
+    'django.contrib.contenttypes',   # Required by auth
+    'django.contrib.staticfiles',    # Static files
 ]
 
 THIRD_PARTY_APPS = [
@@ -40,14 +38,12 @@ LOCAL_APPS = [
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
+# Minimal middleware with custom CSRF protection for cross-origin deployments
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
+    'authentication.csrf_protection.CSRFProtectionMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -63,7 +59,6 @@ TEMPLATES = [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
             ],
         },
     },
@@ -137,7 +132,7 @@ AUTHENTICATION_BACKENDS = [
 # Django REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
+        'authentication.jwt_auth.JWTCookieAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -160,7 +155,7 @@ REST_FRAMEWORK = {
 # CORS settings for React frontend with secure cookies
 CORS_ALLOWED_ORIGINS = config(
     'CORS_ALLOWED_ORIGINS', 
-    default='http://localhost:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5176,http://127.0.0.1:5176,http://localhost:5177,http://127.0.0.1:5177',
+    default='http://localhost:3000,http://localhost:5176,http://127.0.0.1:5176',
     cast=lambda v: [s.strip() for s in v.split(',')]
 )
 
@@ -170,7 +165,7 @@ CORS_ALLOW_ALL_ORIGINS = DEBUG  # Only allow all origins in development
 # CSRF Configuration for API
 CSRF_TRUSTED_ORIGINS = config(
     'CSRF_TRUSTED_ORIGINS', 
-    default='http://localhost:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5176,http://127.0.0.1:5176,http://localhost:5177,http://127.0.0.1:5177',
+    default='http://localhost:3000,http://localhost:5176,http://127.0.0.1:5176',
     cast=lambda v: [s.strip() for s in v.split(',')]
 )
 
@@ -186,6 +181,15 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
+
+# Celery Beat Schedule for automatic tasks
+from celery.schedules import crontab
+CELERY_BEAT_SCHEDULE = {
+    'send-hourly-notifications': {
+        'task': 'subscriptions.tasks.send_periodic_notifications',
+        'schedule': crontab(minute=0),  # Every hour at the top of the hour
+    },
+}
 
 # Email configuration - Gmail SMTP
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -232,20 +236,10 @@ if not DEBUG:
     # Additional Security Headers
     SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 
-# Logging Configuration
+# Logging Configuration - Simplified
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
-        },
-        'simple': {
-            'format': '{levelname} {message}',
-            'style': '{',
-        },
-    },
     'handlers': {
         'file': {
             'level': 'INFO',
@@ -254,29 +248,21 @@ LOGGING = {
             'formatter': 'verbose',
         },
         'console': {
-            'level': 'INFO',
+            'level': 'DEBUG' if DEBUG else 'INFO',
             'class': 'logging.StreamHandler',
-            'formatter': 'simple',
+        },
+    },
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {name} {message}',
+            'style': '{',
         },
     },
     'root': {
-        'handlers': ['console', 'file'],
-        'level': 'INFO',
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['file', 'console'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-        'authentication': {
-            'handlers': ['file', 'console'],
-            'level': 'INFO',
-            'propagate': False,
-        },
+        'handlers': ['console'] + (['file'] if not DEBUG else []),
+        'level': 'DEBUG' if DEBUG else 'INFO',
     },
 }
 
 # Create logs directory
-import os
 os.makedirs(BASE_DIR / 'logs', exist_ok=True)
