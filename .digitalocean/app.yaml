@@ -19,7 +19,7 @@ services:
         scope: RUN_AND_BUILD_TIME
         type: SECRET
       - key: DEBUG
-        value: "False"
+        value: "True"
         scope: RUN_AND_BUILD_TIME
       - key: ALLOWED_HOSTS
         value: "${APP_DOMAIN}"
