@@ -33,6 +33,9 @@ services:
       - key: DJANGO_SETTINGS_MODULE
         value: "stocksubscription.settings"
         scope: RUN_AND_BUILD_TIME
+      - key: PYTHONPATH
+        value: "/workspace"
+        scope: RUN_AND_BUILD_TIME
 
   # React Frontend
   - name: web
