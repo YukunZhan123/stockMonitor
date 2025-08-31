@@ -62,3 +62,15 @@ MODERN_DESIGN_SYSTEM.md
 PRODUCTION_READY.md
 SECURITY.md
 cookies.txt
+
+# Celery
+celerybeat-schedule
+celerybeat-schedule.*
+celerybeat.pid
+
+# Security files
+*.pem
+*.key
+
+# Logs directory
+logs/

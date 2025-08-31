@@ -1,0 +1,87 @@
+name: stock-monitor
+services:
+  - name: web
+    source_dir: /
+    github:
+      repo: your-username/your-repo
+      branch: main
+    run_command: |
+      python manage.py migrate --noinput
+      gunicorn stocksubscription.wsgi:application --bind 0.0.0.0:$PORT
+    environment_slug: python
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 8000
+    health_check:
+      http_path: /admin/
+    envs:
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: "${APP_DOMAIN},${APP_DOMAIN_ALIASES}"
+        type: SECRET
+      - key: SECRET_KEY
+        type: SECRET
+        value: "your-secret-key-here"
+      - key: DATABASE_URL
+        type: SECRET
+      - key: REDIS_URL
+        type: SECRET
+      - key: EMAIL_HOST_USER
+        type: SECRET
+      - key: EMAIL_HOST_PASSWORD
+        type: SECRET
+      - key: DEFAULT_FROM_EMAIL
+        type: SECRET
+
+  - name: celery-worker
+    source_dir: /
+    github:
+      repo: your-username/your-repo
+      branch: main
+    run_command: celery -A stocksubscription worker -l info
+    environment_slug: python
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    envs:
+      - key: DATABASE_URL
+        type: SECRET
+      - key: REDIS_URL
+        type: SECRET
+
+  - name: celery-beat
+    source_dir: /
+    github:
+      repo: your-username/your-repo
+      branch: main
+    run_command: celery -A stocksubscription beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    environment_slug: python
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    envs:
+      - key: DATABASE_URL
+        type: SECRET
+      - key: REDIS_URL
+        type: SECRET
+
+  - name: frontend
+    source_dir: /frontend
+    github:
+      repo: your-username/your-repo
+      branch: main
+    build_command: npm run build
+    environment_slug: node-js
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    envs:
+      - key: VITE_API_URL
+        value: "${web.PUBLIC_URL}/api"
+
+databases:
+  - name: db
+    engine: PG
+    size: basic
+
+  - name: redis
+    engine: REDIS
+    size: basic
