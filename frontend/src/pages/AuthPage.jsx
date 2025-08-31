@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import LoginForm from '../components/LoginForm';
-import RegisterForm from '../components/RegisterForm';
-import { useAuth } from '../context/AuthContext';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import LoginForm from "../components/LoginForm";
+import RegisterForm from "../components/RegisterForm";
+import { useAuth } from "../context/AuthContext";
 
 /**
  * AuthPage - Main authentication page that handles login/register switching
@@ -19,12 +19,12 @@ const AuthPage = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard');
+      navigate("/dashboard");
     }
   }, [isAuthenticated, navigate]);
 
-  const handleAuthSuccess = (user) => {
-    navigate('/dashboard');
+  const handleAuthSuccess = () => {
+    navigate("/dashboard");
   };
 
   const switchToRegister = () => setIsLogin(false);
@@ -34,12 +34,12 @@ const AuthPage = () => {
     // Dark gradient background to match the design system
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900">
       {isLogin ? (
-        <LoginForm 
+        <LoginForm
           onSuccess={handleAuthSuccess}
           onSwitchToRegister={switchToRegister}
         />
       ) : (
-        <RegisterForm 
+        <RegisterForm
           onSuccess={handleAuthSuccess}
           onSwitchToLogin={switchToLogin}
         />

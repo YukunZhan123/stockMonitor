@@ -50,7 +50,10 @@ const secureStorage = {
 
       // Return null for auth failures, but log other errors
       if (errorInfo.type !== ERROR_TYPES.AUTH_FAILED) {
-        console.warn("Auth check failed:", errorInfo.message);
+        // Only log in development
+        if (import.meta.env.DEV) {
+          console.warn("Auth check failed:", errorInfo.message);
+        }
       }
 
       return null;
@@ -63,7 +66,6 @@ const secureStorage = {
       await authAPI.logout();
     } catch (error) {
       logError(error, { operation: "clearAuth" });
-      // Don't throw - logout should always succeed locally
     }
   },
 };
@@ -153,17 +155,6 @@ export const AuthProvider = ({ children }) => {
       setUser(user);
       setError(null);
 
-      // Verify the auth state immediately after login to ensure consistency
-      try {
-        const verifyResponse = await authAPI.verifyAuth();
-        if (verifyResponse.data.user) {
-          setUser(verifyResponse.data.user);
-        }
-      } catch (verifyError) {
-        console.warn("Auth verification after login failed:", verifyError);
-        // Don't fail the login if verification fails
-      }
-
       return { success: true, user };
     } catch (error) {
       logError(error, { operation: "login", email });
@@ -175,7 +166,9 @@ export const AuthProvider = ({ children }) => {
 
       const userMessage = getUserFriendlyMessage(error, {
         [ERROR_TYPES.AUTH_FAILED]:
-          error.response?.data?.error || error.response?.data?.detail || "Invalid email or password",
+          error.response?.data?.error ||
+          error.response?.data?.detail ||
+          "Invalid email or password",
       });
 
       setError(userMessage);
@@ -226,9 +219,9 @@ export const AuthProvider = ({ children }) => {
       // Attempt to clear server-side session
       if (isOnline) {
         await secureStorage.clearAuth();
-        
+
         // Force a small delay to ensure cookies are cleared before next login attempt
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       } else {
         // In offline mode, just log the intent
         console.info(
@@ -237,7 +230,6 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       logError(error, { operation: "logout" });
-      // Don't show error to user - logout should appear to always succeed
     }
   };
 

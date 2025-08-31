@@ -87,6 +87,7 @@ const DashboardWrapper = () => {
   return <Dashboard user={user} onLogout={logout} />;
 };
 
+
 const AppRoutes = () => {
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>

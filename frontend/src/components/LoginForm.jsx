@@ -56,22 +56,24 @@ export default function LoginForm({ onSuccess, onSwitchToRegister }) {
     const result = await login(formData.email, formData.password);
 
     if (result.success) {
-      onSuccess(result.user);
+      onSuccess();
     } else if (result.fieldErrors) {
       // Handle field-specific validation errors from backend
       const backendErrors = {};
-      
-      Object.keys(result.fieldErrors).forEach(field => {
+
+      Object.keys(result.fieldErrors).forEach((field) => {
         const errorMessages = result.fieldErrors[field];
-        const errorMessage = Array.isArray(errorMessages) ? errorMessages[0] : errorMessages;
-        
-        if (field === 'non_field_errors') {
+        const errorMessage = Array.isArray(errorMessages)
+          ? errorMessages[0]
+          : errorMessages;
+
+        if (field === "non_field_errors") {
           backendErrors.general = errorMessage;
         } else {
           backendErrors[field] = errorMessage;
         }
       });
-      
+
       setErrors(backendErrors);
     } else {
       setErrors({ general: result.error });

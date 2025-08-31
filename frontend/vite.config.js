@@ -4,8 +4,20 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          ui: ['react-router-dom']
+        }
+      }
+    }
+  },
   server: {
-    host: '127.0.0.1', // Make server accessible on 127.0.0.1
+    host: '127.0.0.1',
     port: 5176
   }
 })
