@@ -6,14 +6,11 @@ services:
     github:
       repo: YukunZhan123/stockMonitor
       branch: main
-    run_command: |
-      python manage.py collectstatic --noinput
-      python manage.py migrate
-      gunicorn stocksubscription.wsgi:application
+    run_command: gunicorn stocksubscription.wsgi:application --bind 0.0.0.0:8080 --workers 2
     environment_slug: python
     instance_count: 1
     instance_size_slug: basic-xxs
-    http_port: 8000
+    http_port: 8080
     routes:
       - path: /api
       - path: /admin
@@ -32,6 +29,9 @@ services:
         scope: RUN_AND_BUILD_TIME
       - key: CSRF_TRUSTED_ORIGINS
         value: "https://${APP_DOMAIN}"
+        scope: RUN_AND_BUILD_TIME
+      - key: DJANGO_SETTINGS_MODULE
+        value: "stocksubscription.settings"
         scope: RUN_AND_BUILD_TIME
 
   # React Frontend
@@ -63,6 +63,16 @@ services:
     environment_slug: python
     instance_count: 1
     instance_size_slug: basic-xxs
+    envs:
+      - key: SECRET_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: DEBUG
+        value: "False"
+        scope: RUN_AND_BUILD_TIME
+      - key: DJANGO_SETTINGS_MODULE
+        value: "stocksubscription.settings"
+        scope: RUN_AND_BUILD_TIME
 
   # Celery Beat for Scheduled Tasks
   - name: scheduler
@@ -74,6 +84,16 @@ services:
     environment_slug: python
     instance_count: 1
     instance_size_slug: basic-xxs
+    envs:
+      - key: SECRET_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: DEBUG
+        value: "False"
+        scope: RUN_AND_BUILD_TIME
+      - key: DJANGO_SETTINGS_MODULE
+        value: "stocksubscription.settings"
+        scope: RUN_AND_BUILD_TIME
 
 databases:
   - engine: PG
@@ -88,7 +108,9 @@ jobs:
     github:
       repo: YukunZhan123/stockMonitor
       branch: main
-    run_command: python manage.py migrate
+    run_command: |
+      python manage.py collectstatic --noinput
+      python manage.py migrate
     environment_slug: python
     instance_size_slug: basic-xxs
     kind: PRE_DEPLOY
