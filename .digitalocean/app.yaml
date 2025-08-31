@@ -36,6 +36,31 @@ services:
       - key: PYTHONPATH
         value: "/workspace"
         scope: RUN_AND_BUILD_TIME
+      - key: DATABASE_URL
+        value: "${stocksubscription-db.DATABASE_URL}"
+        scope: RUN_TIME
+      - key: CELERY_BROKER_URL
+        value: "${redis.REDIS_URL}"
+        scope: RUN_TIME
+      - key: CELERY_RESULT_BACKEND
+        value: "${redis.REDIS_URL}"
+        scope: RUN_TIME
+      - key: EMAIL_BACKEND
+        value: "django.core.mail.backends.smtp.EmailBackend"
+        scope: RUN_TIME
+      - key: EMAIL_HOST_USER
+        value: "yukunzhan123@gmail.com"
+        scope: RUN_TIME
+      - key: EMAIL_HOST_PASSWORD
+        value: "todkpfywwxksutsl"
+        scope: RUN_TIME
+        type: SECRET
+      - key: DEFAULT_FROM_EMAIL
+        value: "yukunzhan123@gmail.com"
+        scope: RUN_TIME
+      - key: OPENAI_API_KEY
+        scope: RUN_TIME
+        type: SECRET
 
   # React Frontend
   - name: web
@@ -76,6 +101,25 @@ services:
       - key: DJANGO_SETTINGS_MODULE
         value: "stocksubscription.settings"
         scope: RUN_AND_BUILD_TIME
+      - key: DATABASE_URL
+        value: "${stocksubscription-db.DATABASE_URL}"
+        scope: RUN_TIME
+      - key: CELERY_BROKER_URL
+        value: "${redis.REDIS_URL}"
+        scope: RUN_TIME
+      - key: CELERY_RESULT_BACKEND
+        value: "${redis.REDIS_URL}"
+        scope: RUN_TIME
+      - key: OPENAI_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: EMAIL_HOST_USER
+        value: "yukunzhan123@gmail.com"
+        scope: RUN_TIME
+      - key: EMAIL_HOST_PASSWORD
+        value: "todkpfywwxksutsl"
+        scope: RUN_TIME
+        type: SECRET
 
   # Celery Beat for Scheduled Tasks
   - name: scheduler
@@ -97,6 +141,15 @@ services:
       - key: DJANGO_SETTINGS_MODULE
         value: "stocksubscription.settings"
         scope: RUN_AND_BUILD_TIME
+      - key: DATABASE_URL
+        value: "${stocksubscription-db.DATABASE_URL}"
+        scope: RUN_TIME
+      - key: CELERY_BROKER_URL
+        value: "${redis.REDIS_URL}"
+        scope: RUN_TIME
+      - key: CELERY_RESULT_BACKEND
+        value: "${redis.REDIS_URL}"
+        scope: RUN_TIME
 
 databases:
   - engine: PG
@@ -104,6 +157,11 @@ databases:
     num_nodes: 1
     size: basic-xs
     version: "14"
+  - engine: REDIS
+    name: redis
+    num_nodes: 1
+    size: basic-xxs
+    version: "7"
 
 jobs:
   - name: migrate
@@ -127,3 +185,6 @@ jobs:
       - key: DJANGO_SETTINGS_MODULE
         value: "stocksubscription.settings"
         scope: RUN_AND_BUILD_TIME
+      - key: DATABASE_URL
+        value: "${stocksubscription-db.DATABASE_URL}"
+        scope: RUN_TIME
