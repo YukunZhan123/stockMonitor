@@ -10,6 +10,7 @@ from typing import Optional, Dict, Any
 import json
 
 from .models import StockSubscription, NotificationLog
+from .ai_analysis import StockAnalysisService
 
 logger = logging.getLogger('subscriptions')
 
@@ -110,6 +111,7 @@ class NotificationService:
     def __init__(self):
         self.from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@stockmonitor.com')
         self.site_name = getattr(settings, 'SITE_NAME', 'Stock Monitor')
+        self.ai_service = StockAnalysisService()
     
     def send_stock_notification(
         self, 
@@ -133,6 +135,12 @@ class NotificationService:
         )
         
         try:
+            # Get AI recommendation for the stock
+            ai_recommendation = self.ai_service.get_stock_recommendation(
+                subscription.stock_ticker, 
+                subscription.stock_price
+            )
+            
             # Generate email content
             context = {
                 'subscription': subscription,
@@ -140,7 +148,8 @@ class NotificationService:
                 'current_price': subscription.stock_price,
                 'price_display': subscription.price_display,
                 'custom_message': custom_message,
-                'notification_type': notification_type
+                'notification_type': notification_type,
+                'ai_recommendation': ai_recommendation
             }
             
             # Generate HTML and text versions
@@ -217,3 +226,95 @@ class NotificationService:
         
         logger.info(f"Bulk notification complete: {results['sent']} sent, {results['failed']} failed")
         return results
+    
+    def send_merged_notification(
+        self, 
+        subscriptions: list,
+        notification_type: str = 'scheduled',
+        custom_message: Optional[str] = None
+    ) -> NotificationLog:
+        """
+        Send single email with multiple stock subscriptions merged
+        Used when user has multiple subscriptions to same email address
+        """
+        if not subscriptions:
+            raise ValueError("No subscriptions provided")
+        
+        # Use first subscription as primary for logging purposes
+        primary_subscription = subscriptions[0]
+        email_address = primary_subscription.email
+        
+        # Create notification log entry (using primary subscription)
+        notification_log = NotificationLog.objects.create(
+            subscription=primary_subscription,
+            notification_type=notification_type,
+            email_to=email_address,
+            stock_price_at_send=primary_subscription.stock_price,
+            subject=self._generate_merged_subject(subscriptions),
+            status='pending'
+        )
+        
+        try:
+            # Get AI recommendations for all stocks
+            stock_data = {sub.stock_ticker: sub.stock_price for sub in subscriptions}
+            ai_recommendations = self.ai_service.get_multiple_recommendations(stock_data)
+            
+            # Generate email content with multiple stocks
+            context = {
+                'subscriptions': subscriptions,
+                'primary_subscription': primary_subscription,
+                'site_name': self.site_name,
+                'custom_message': custom_message,
+                'notification_type': notification_type,
+                'stock_count': len(subscriptions),
+                'ai_recommendations': ai_recommendations
+            }
+            
+            # Use merged email templates
+            html_content = render_to_string('emails/stock_notification_merged.html', context)
+            text_content = render_to_string('emails/stock_notification_merged.txt', context)
+            
+            # Send email
+            success = send_mail(
+                subject=notification_log.subject,
+                message=text_content,
+                from_email=self.from_email,
+                recipient_list=[email_address],
+                html_message=html_content,
+                fail_silently=False
+            )
+            
+            if success:
+                # Update notification log
+                notification_log.status = 'sent'
+                notification_log.sent_at = timezone.now()
+                
+                # Update all subscriptions' last notification sent
+                for subscription in subscriptions:
+                    subscription.last_notification_sent = timezone.now()
+                    subscription.last_price_sent = subscription.stock_price
+                    subscription.save(update_fields=['last_notification_sent', 'last_price_sent'])
+                
+                logger.info(f"Merged notification sent: {len(subscriptions)} stocks to {email_address}")
+            else:
+                notification_log.status = 'failed'
+                notification_log.error_message = 'Email send returned False'
+                logger.error(f"Merged email send failed for: {email_address}")
+        
+        except Exception as e:
+            notification_log.status = 'failed'
+            notification_log.error_message = str(e)
+            logger.error(f"Merged email notification failed: {email_address} - {str(e)}")
+        
+        finally:
+            notification_log.save()
+        
+        return notification_log
+    
+    def _generate_merged_subject(self, subscriptions: list) -> str:
+        """Generate subject line for merged email"""
+        tickers = [sub.stock_ticker for sub in subscriptions]
+        if len(tickers) <= 3:
+            return f"Stock Updates: {', '.join(tickers)}"
+        else:
+            return f"Stock Updates: {', '.join(tickers[:2])} and {len(tickers)-2} more"

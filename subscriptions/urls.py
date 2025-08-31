@@ -15,5 +15,5 @@ urlpatterns = [
     path('<uuid:pk>/send-now/', views.send_now_view, name='subscription-send-now'),
     
     # Additional utility endpoints
-    path('stats/', views.subscription_stats, name='subscription-stats'),
+    path('trigger-periodic/', views.trigger_periodic_notifications, name='trigger-periodic'),
 ]

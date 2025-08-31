@@ -18,8 +18,6 @@ from .serializers import (
 from .services import StockDataService, NotificationService
 from stocksubscription.utils.error_handler import (
     handle_view_errors,
-    log_error,
-    ValidationError as CustomValidationError,
 )
 
 logger = logging.getLogger('subscriptions')
@@ -46,8 +44,13 @@ class StockSubscriptionViewSet(ModelViewSet):
     pagination_class = StandardResultsSetPagination
     
     def get_queryset(self):
-        """Filter subscriptions to current user only"""
-        queryset = StockSubscription.objects.filter(user=self.request.user)
+        """Filter subscriptions - admin users see all, regular users see only their own"""
+        if self.request.user.is_staff:
+            # Admin users can see all subscriptions
+            queryset = StockSubscription.objects.all()
+        else:
+            # Regular users can only see their own subscriptions
+            queryset = StockSubscription.objects.filter(user=self.request.user)
         
         # Filter by active status
         is_active = self.request.query_params.get('active')
@@ -67,13 +70,14 @@ class StockSubscriptionViewSet(ModelViewSet):
             return StockSubscriptionListSerializer
         return StockSubscriptionSerializer
     
-    @handle_view_errors
     def create(self, request, *args, **kwargs):
         """Create new stock subscription"""
         logger.info(f"Creating subscription for user {request.user.id}")
         
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            logger.warning(f"Subscription creation failed for user {request.user.id}: {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
         # Fetch current stock price before saving
         stock_ticker = serializer.validated_data['stock_ticker']
@@ -97,14 +101,19 @@ class StockSubscriptionViewSet(ModelViewSet):
             status=status.HTTP_201_CREATED
         )
     
-    @handle_view_errors
     def update(self, request, *args, **kwargs):
         """Update existing subscription"""
         instance = self.get_object()
         logger.info(f"Updating subscription {instance.id}")
         
+        # Check if user can modify this subscription
+        if not request.user.is_staff and instance.user != request.user:
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        
         serializer = self.get_serializer(instance, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            logger.warning(f"Subscription update failed for {instance.id}: {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
         # Update stock price if ticker changed
         if 'stock_ticker' in serializer.validated_data:
@@ -119,34 +128,59 @@ class StockSubscriptionViewSet(ModelViewSet):
         subscription = serializer.save()
         return Response(StockSubscriptionSerializer(subscription).data)
     
-    @handle_view_errors
     def destroy(self, request, *args, **kwargs):
         """Delete subscription"""
         instance = self.get_object()
         logger.info(f"Deleting subscription {instance.id} for user {request.user.id}")
+        
+        # Check if user can delete this subscription
+        if not request.user.is_staff and instance.user != request.user:
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
         
         instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
     
     
     @action(detail=False, methods=['post'])
-    @handle_view_errors
     def refresh_prices(self, request):
-        """Refresh stock prices for all user's subscriptions"""
-        logger.info(f"Refreshing prices for user {request.user.id}")
+        """Refresh stock prices for subscriptions (admin: all, regular user: only their own)"""
+        if request.user.is_staff:
+            logger.info(f"Admin refreshing prices for all subscriptions")
+        else:
+            logger.info(f"Refreshing prices for user {request.user.id}")
         
         subscriptions = self.get_queryset().filter(is_active=True)
         stock_service = StockDataService()
         updated_count = 0
         
-        for subscription in subscriptions:
+        # Get unique tickers to avoid duplicate API calls
+        unique_tickers = subscriptions.values_list('stock_ticker', flat=True).distinct()
+        price_cache = {}
+        
+        # Fetch prices for all unique tickers first
+        for ticker in unique_tickers:
             try:
-                current_price = stock_service.get_current_price(subscription.stock_ticker)
-                subscription.stock_price = current_price
-                subscription.save(update_fields=['stock_price', 'updated_at'])
-                updated_count += 1
+                price_cache[ticker] = stock_service.get_current_price(ticker)
             except Exception as e:
-                logger.warning(f"Could not update price for {subscription.stock_ticker}: {str(e)}")
+                logger.warning(f"Could not fetch price for {ticker}: {str(e)}")
+                price_cache[ticker] = None
+        
+        # Bulk update subscriptions using cached prices
+        subscriptions_to_update = []
+        for subscription in subscriptions:
+            price = price_cache.get(subscription.stock_ticker)
+            if price is not None:
+                subscription.stock_price = price
+                subscriptions_to_update.append(subscription)
+                updated_count += 1
+        
+        # Bulk update database
+        if subscriptions_to_update:
+            StockSubscription.objects.bulk_update(
+                subscriptions_to_update, 
+                ['stock_price'], 
+                batch_size=100
+            )
         
         return Response({
             'message': f'Updated prices for {updated_count} subscriptions',
@@ -169,10 +203,17 @@ class NotificationLogViewSet(ModelViewSet):
     http_method_names = ['get']  # Read-only
     
     def get_queryset(self):
-        """Filter to current user's subscription logs only"""
-        queryset = NotificationLog.objects.filter(
-            subscription__user=self.request.user
-        ).select_related('subscription')
+        """Filter logs - admin users see all, regular users see only their own"""
+        if self.request.user.is_staff:
+            # Admin users can see all notification logs
+            queryset = NotificationLog.objects.all()
+        else:
+            # Regular users can only see their own subscription logs
+            queryset = NotificationLog.objects.filter(
+                subscription__user=self.request.user
+            )
+        
+        queryset = queryset.select_related('subscription', 'subscription__user')
         
         # Filter by subscription
         subscription_id = self.request.query_params.get('subscription')
@@ -199,7 +240,12 @@ class NotificationLogViewSet(ModelViewSet):
 def send_now_view(request, pk):
     """Send notification immediately for specific subscription"""
     try:
-        subscription = StockSubscription.objects.get(pk=pk, user=request.user)
+        if request.user.is_staff:
+            # Admin users can send notifications for any subscription
+            subscription = StockSubscription.objects.get(pk=pk)
+        else:
+            # Regular users can only send notifications for their own subscriptions
+            subscription = StockSubscription.objects.get(pk=pk, user=request.user)
     except StockSubscription.DoesNotExist:
         return Response({'error': 'Subscription not found'}, status=status.HTTP_404_NOT_FOUND)
     
@@ -241,24 +287,31 @@ def send_now_view(request, pk):
 
 
 # Legacy function-based views for specific endpoints
-@api_view(['GET'])
+
+
+@api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])
 @handle_view_errors
-def subscription_stats(request):
-    """Get subscription statistics for current user"""
-    subscriptions = StockSubscription.objects.filter(user=request.user)
+def trigger_periodic_notifications(request):
+    """Manually trigger periodic notifications (for testing)"""
+    # Only allow admin users to trigger this
+    if not request.user.is_staff:
+        return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
     
-    stats = {
-        'total_subscriptions': subscriptions.count(),
-        'active_subscriptions': subscriptions.filter(is_active=True).count(),
-        'unique_stocks': subscriptions.values('stock_ticker').distinct().count(),
-        'total_notifications_sent': NotificationLog.objects.filter(
-            subscription__user=request.user,
-            status='sent'
-        ).count(),
-        'recent_notifications': NotificationLog.objects.filter(
-            subscription__user=request.user
-        ).count()
-    }
-    
-    return Response(stats)
+    try:
+        from .tasks import send_periodic_notifications
+        
+        # Run the task synchronously for immediate feedback
+        result = send_periodic_notifications()
+        
+        return Response({
+            'message': 'Periodic notifications triggered successfully',
+            'result': result
+        })
+        
+    except Exception as e:
+        logger.error(f"Manual trigger of periodic notifications failed: {str(e)}")
+        return Response({
+            'error': 'Failed to trigger periodic notifications',
+            'details': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

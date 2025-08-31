@@ -9,10 +9,10 @@ class StockSubscriptionAdmin(admin.ModelAdmin):
     """Admin interface for stock subscriptions"""
     
     list_display = [
-        'stock_ticker', 'user_display', 'email', 'current_price_display', 
+        'stock_ticker', 'username_display', 'user_email_display', 'email', 'current_price_display', 
         'is_active', 'last_notification_display', 'created_at'
     ]
-    list_filter = ['is_active', 'stock_ticker', 'created_at', 'last_notification_sent']
+    list_filter = ['is_active', 'stock_ticker', 'user__username', 'created_at', 'last_notification_sent']
     search_fields = ['stock_ticker', 'email', 'user__username', 'user__email']
     readonly_fields = ['id', 'created_at', 'updated_at', 'last_notification_sent', 'last_price_sent']
     ordering = ['-created_at']
@@ -30,10 +30,15 @@ class StockSubscriptionAdmin(admin.ModelAdmin):
         }),
     )
     
-    def user_display(self, obj):
-        return f"{obj.user.username} ({obj.user.email})"
-    user_display.short_description = 'User'
-    user_display.admin_order_field = 'user__username'
+    def username_display(self, obj):
+        return format_html('<strong>{}</strong>', obj.user.username)
+    username_display.short_description = 'Username'
+    username_display.admin_order_field = 'user__username'
+    
+    def user_email_display(self, obj):
+        return obj.user.email
+    user_email_display.short_description = 'User Email'
+    user_email_display.admin_order_field = 'user__email'
     
     def current_price_display(self, obj):
         if obj.stock_price:
@@ -76,15 +81,34 @@ class StockSubscriptionAdmin(admin.ModelAdmin):
         stock_service = StockDataService()
         updated = 0
         
-        for subscription in queryset:
+        # Get unique tickers to avoid duplicate API calls
+        unique_tickers = queryset.values_list('stock_ticker', flat=True).distinct()
+        price_cache = {}
+        
+        # Fetch prices for all unique tickers first
+        for ticker in unique_tickers:
             try:
-                price = stock_service.get_current_price(subscription.stock_ticker)
-                if price:
-                    subscription.stock_price = price
-                    subscription.save(update_fields=['stock_price', 'updated_at'])
-                    updated += 1
+                price_cache[ticker] = stock_service.get_current_price(ticker)
             except Exception:
-                pass
+                price_cache[ticker] = None
+        
+        # Bulk update subscriptions using cached prices
+        subscriptions_to_update = []
+        for subscription in queryset:
+            price = price_cache.get(subscription.stock_ticker)
+            if price is not None:
+                subscription.stock_price = price
+                subscriptions_to_update.append(subscription)
+                updated += 1
+        
+        # Bulk update database
+        if subscriptions_to_update:
+            from .models import StockSubscription
+            StockSubscription.objects.bulk_update(
+                subscriptions_to_update, 
+                ['stock_price', 'updated_at'], 
+                batch_size=100
+            )
         
         self.message_user(request, f'Refreshed prices for {updated} subscriptions.')
     refresh_prices.short_description = 'Refresh stock prices'
@@ -95,10 +119,10 @@ class NotificationLogAdmin(admin.ModelAdmin):
     """Admin interface for notification logs"""
     
     list_display = [
-        'subscription_display', 'notification_type', 'status_display', 
+        'stock_ticker_display', 'username_display', 'notification_type', 'status_display', 
         'email_to', 'price_at_send', 'sent_at', 'created_at'
     ]
-    list_filter = ['status', 'notification_type', 'created_at', 'sent_at']
+    list_filter = ['status', 'notification_type', 'subscription__user__username', 'created_at', 'sent_at']
     search_fields = ['email_to', 'subject', 'subscription__stock_ticker', 'subscription__user__username']
     readonly_fields = ['id', 'created_at', 'sent_at']
     ordering = ['-created_at']
@@ -116,10 +140,15 @@ class NotificationLogAdmin(admin.ModelAdmin):
         }),
     )
     
-    def subscription_display(self, obj):
-        return f"{obj.subscription.stock_ticker} ({obj.subscription.user.username})"
-    subscription_display.short_description = 'Subscription'
-    subscription_display.admin_order_field = 'subscription__stock_ticker'
+    def stock_ticker_display(self, obj):
+        return format_html('<strong>{}</strong>', obj.subscription.stock_ticker)
+    stock_ticker_display.short_description = 'Stock'
+    stock_ticker_display.admin_order_field = 'subscription__stock_ticker'
+    
+    def username_display(self, obj):
+        return format_html('<strong>{}</strong>', obj.subscription.user.username)
+    username_display.short_description = 'Username'
+    username_display.admin_order_field = 'subscription__user__username'
     
     def status_display(self, obj):
         colors = {
