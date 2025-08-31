@@ -3,11 +3,9 @@ from rest_framework.decorators import api_view, permission_classes, throttle_cla
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
-from django.contrib.auth import login, logout
-from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
+# JWT-only authentication - no Django session management needed
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.cache import never_cache
-from django.middleware.csrf import get_token
 import jwt
 import logging
 from django.conf import settings
@@ -15,19 +13,10 @@ from datetime import datetime, timedelta
 from .serializers import UserRegistrationSerializer, UserLoginSerializer, UserSerializer
 from django.contrib.auth.models import User
 from django.core.cache import cache
-import hashlib
 
-# Import production error handling utilities
+# Import error handling utilities
 from stocksubscription.utils.error_handler import (
     handle_view_errors,
-    log_error,
-    create_error_response,
-    SecurityValidator,
-    RateLimitMonitor,
-    monitor_performance,
-    AuthenticationError,
-    ValidationError as CustomValidationError,
-    RateLimitError,
     get_client_ip
 )
 
@@ -74,10 +63,10 @@ def generate_jwt_tokens(user):
 @handle_view_errors
 def register_view(request):
     """
-    High-level purpose: Handle user registration with secure cookies and rate limiting
+    High-level purpose: JWT-only user registration with secure httpOnly cookies
     - Validate registration data with enhanced security
-    - Create new user account
-    - Set JWT tokens as httpOnly cookies
+    - Create new user account (no Django session)
+    - Generate and set JWT tokens as httpOnly cookies
     - Log registration attempts for security monitoring
     """
     client_ip = get_client_ip(request)
@@ -100,8 +89,7 @@ def register_view(request):
             user = serializer.save()
             access_token, refresh_token = generate_jwt_tokens(user)
             
-            # Log user into Django session for SessionAuthentication
-            login(request, user)
+            # JWT-only authentication - no session creation needed
             
             logger.info(f"User registered successfully: {user.email}")
             
@@ -139,10 +127,10 @@ def register_view(request):
 @handle_view_errors
 def login_view(request):
     """
-    High-level purpose: Handle user login with enhanced security
+    High-level purpose: JWT-only user login with enhanced security
     - Rate limiting and brute force protection
     - Secure logging of login attempts
-    - Generate JWT tokens with httpOnly cookies
+    - Generate JWT tokens with httpOnly cookies (no Django session)
     - Account lockout after failed attempts
     """
     client_ip = get_client_ip(request)
@@ -175,8 +163,7 @@ def login_view(request):
             user = serializer.validated_data['user']
             access_token, refresh_token = generate_jwt_tokens(user)
             
-            # Log user into Django session for SessionAuthentication
-            login(request, user)
+            # JWT-only authentication - no session creation needed
             
             logger.info(f"User login successful: {user.email} from IP: {client_ip}")
             
@@ -301,8 +288,7 @@ def logout_view(request):
     - Clear authentication cookies
     - Invalidate session
     """
-    # Logout from Django session
-    logout(request)
+    # JWT-only logout - no session to clear
     
     response = Response({
         'message': 'Logout successful'
@@ -326,28 +312,14 @@ def logout_view(request):
     
     return response
 
-
-@api_view(['GET'])
-@permission_classes([AllowAny])
-@ensure_csrf_cookie
-def csrf_token_view(request):
-    """
-    Get CSRF token for frontend API calls
-    """
-    csrf_token = get_token(request)
-    return Response({
-        'csrfToken': csrf_token
-    }, status=status.HTTP_200_OK)
-
-
 def set_auth_cookies(response, access_token, refresh_token):
     """
-    High-level purpose: Set secure httpOnly cookies for authentication
+    High-level purpose: Set secure httpOnly cookies for cross-origin JWT authentication
     - httpOnly prevents XSS access to tokens
-    - Secure flag for HTTPS only in production
-    - SameSite=None for cross-origin production, Lax for development
+    - Secure flag for HTTPS only in production  
+    - SameSite=None for cross-origin + custom CSRF protection
     """
-    # Determine SameSite setting based on environment
+    # Use None for cross-origin deployments with custom CSRF protection
     samesite_setting = 'None' if not settings.DEBUG else 'Lax'
     
     # Set access token cookie (1 hour expiration)
@@ -357,19 +329,19 @@ def set_auth_cookies(response, access_token, refresh_token):
         max_age=3600,  # 1 hour
         httponly=True,
         secure=not settings.DEBUG,  # HTTPS only in production
-        samesite=samesite_setting,  # None for production cross-origin, Lax for dev
+        samesite=samesite_setting,  # Strict prevents CSRF attacks
         path='/',  # Ensure cookie is available for all paths
         domain=None  # Let browser set domain automatically
     )
     
-    # Set refresh token cookie (7 days expiration)
+    # Set refresh token cookie (7 days expiration)  
     response.set_cookie(
         'refresh_token', 
         refresh_token,
         max_age=7 * 24 * 3600,  # 7 days
         httponly=True,
         secure=not settings.DEBUG,
-        samesite=samesite_setting,  # None for production cross-origin, Lax for dev
+        samesite=samesite_setting,  # Strict prevents CSRF attacks
         path='/',  # Ensure cookie is available for all paths
         domain=None  # Let browser set domain automatically
     )
