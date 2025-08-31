@@ -9,3 +9,5 @@ openai==1.102.0
 PyJWT==2.8.0
 django-extensions==3.2.3
 gunicorn==21.2.0
+requests
+dj-database-url

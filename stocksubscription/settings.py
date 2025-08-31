@@ -76,16 +76,12 @@ if DEBUG:
         }
     }
 else:
-    # Production - PostgreSQL
+    # Production - PostgreSQL using DATABASE_URL
+    import dj_database_url
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': config('DB_NAME', default='stocksubscription'),
-            'USER': config('DB_USER', default='postgres'),
-            'PASSWORD': config('DB_PASSWORD', default=''),
-            'HOST': config('DB_HOST', default='localhost'),
-            'PORT': config('DB_PORT', default='5432'),
-        }
+        'default': dj_database_url.config(
+            default=config('DATABASE_URL', default='postgresql://localhost/stocksubscription')
+        )
     }
 
 # Password validation
