@@ -18,10 +18,13 @@ DEBUG = config('DEBUG', default=False, cast=bool)  # Default to False for securi
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,testserver', cast=lambda v: [s.strip() for s in v.split(',')])
 
 # Application definition
-# Ultra-minimal Django apps (no admin, no sessions, no messages)
+# Django apps with admin enabled
 DJANGO_APPS = [
+    'django.contrib.admin',          # Admin interface
     'django.contrib.auth',           # User model only
     'django.contrib.contenttypes',   # Required by auth
+    'django.contrib.sessions',       # Required by admin
+    'django.contrib.messages',       # Required by admin
     'django.contrib.staticfiles',    # Static files
 ]
 
@@ -39,12 +42,15 @@ LOCAL_APPS = [
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
-# Minimal middleware with custom CSRF protection for cross-origin deployments
+# Middleware with admin support
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    # 'authentication.csrf_protection.CSRFProtectionMiddleware',  # TEMPORARILY DISABLED FOR DEBUGGING
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
