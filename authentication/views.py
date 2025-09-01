@@ -300,14 +300,12 @@ def logout_view(request):
     response.delete_cookie(
         'access_token',
         path='/',
-        domain=None,
-        samesite=samesite_setting
+        samesite='Lax'
     )
     response.delete_cookie(
         'refresh_token',
         path='/',
-        domain=None,
-        samesite=samesite_setting
+        samesite='Lax'
     )
     
     return response
@@ -317,10 +315,10 @@ def set_auth_cookies(response, access_token, refresh_token):
     High-level purpose: Set secure httpOnly cookies for cross-origin JWT authentication
     - httpOnly prevents XSS access to tokens
     - Secure flag for HTTPS only in production  
-    - SameSite=None for cross-origin + custom CSRF protection
+    - SameSite=Lax for same-origin deployments
     """
-    # Use None for cross-origin deployments with custom CSRF protection
-    samesite_setting = 'None' if not settings.DEBUG else 'Lax'
+    # For same-origin deployment on DigitalOcean
+    samesite_setting = 'Lax'  # Use Lax for same-origin, not None
     
     # Set access token cookie (1 hour expiration)
     response.set_cookie(
@@ -329,9 +327,9 @@ def set_auth_cookies(response, access_token, refresh_token):
         max_age=3600,  # 1 hour
         httponly=True,
         secure=not settings.DEBUG,  # HTTPS only in production
-        samesite=samesite_setting,  # Strict prevents CSRF attacks
+        samesite=samesite_setting,
         path='/',  # Ensure cookie is available for all paths
-        domain=None  # Let browser set domain automatically
+        # Remove domain parameter entirely for same-origin
     )
     
     # Set refresh token cookie (7 days expiration)  
@@ -341,7 +339,7 @@ def set_auth_cookies(response, access_token, refresh_token):
         max_age=7 * 24 * 3600,  # 7 days
         httponly=True,
         secure=not settings.DEBUG,
-        samesite=samesite_setting,  # Strict prevents CSRF attacks
+        samesite=samesite_setting,
         path='/',  # Ensure cookie is available for all paths
-        domain=None  # Let browser set domain automatically
+        # Remove domain parameter entirely for same-origin
     )
