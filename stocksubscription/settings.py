@@ -44,7 +44,7 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'authentication.csrf_protection.CSRFProtectionMiddleware',
+    # 'authentication.csrf_protection.CSRFProtectionMiddleware',  # TEMPORARILY DISABLED FOR DEBUGGING
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -225,13 +225,13 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     
-    # Cookie Security for cross-origin production
+    # Cookie Security for same-origin production deployment
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SAMESITE = 'None'  # Allow cross-origin cookies in production
+    SESSION_COOKIE_SAMESITE = 'Lax'  # Same-origin deployment
     CSRF_COOKIE_SECURE = True
     CSRF_COOKIE_HTTPONLY = False  # Allow frontend to read CSRF cookie for API calls
-    CSRF_COOKIE_SAMESITE = 'None'  # Allow cross-origin CSRF cookies
+    CSRF_COOKIE_SAMESITE = 'Lax'  # Same-origin deployment
     
     # Additional Security Headers
     SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
