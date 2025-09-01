@@ -39,12 +39,6 @@ services:
       - key: DATABASE_URL
         value: "${stocksubscription-db.DATABASE_URL}"
         scope: RUN_TIME
-      - key: CELERY_BROKER_URL
-        value: "${redis.REDIS_URL}"
-        scope: RUN_TIME
-      - key: CELERY_RESULT_BACKEND
-        value: "${redis.REDIS_URL}"
-        scope: RUN_TIME
       - key: EMAIL_BACKEND
         value: "django.core.mail.backends.smtp.EmailBackend"
         scope: RUN_TIME
@@ -104,12 +98,6 @@ services:
       - key: DATABASE_URL
         value: "${stocksubscription-db.DATABASE_URL}"
         scope: RUN_TIME
-      - key: CELERY_BROKER_URL
-        value: "${redis.REDIS_URL}"
-        scope: RUN_TIME
-      - key: CELERY_RESULT_BACKEND
-        value: "${redis.REDIS_URL}"
-        scope: RUN_TIME
       - key: OPENAI_API_KEY
         scope: RUN_TIME
         type: SECRET
@@ -127,7 +115,7 @@ services:
     github:
       repo: YukunZhan123/stockMonitor
       branch: main
-    run_command: celery -A stocksubscription beat --loglevel=info
+    run_command: celery -A stocksubscription beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     environment_slug: python
     instance_count: 1
     instance_size_slug: basic-xxs
@@ -144,12 +132,6 @@ services:
       - key: DATABASE_URL
         value: "${stocksubscription-db.DATABASE_URL}"
         scope: RUN_TIME
-      - key: CELERY_BROKER_URL
-        value: "${redis.REDIS_URL}"
-        scope: RUN_TIME
-      - key: CELERY_RESULT_BACKEND
-        value: "${redis.REDIS_URL}"
-        scope: RUN_TIME
 
 databases:
   - engine: PG
@@ -157,11 +139,6 @@ databases:
     num_nodes: 1
     size: basic-xs
     version: "14"
-  - engine: REDIS
-    name: redis
-    num_nodes: 1
-    size: basic-xxs
-    version: "7"
 
 jobs:
   - name: migrate
