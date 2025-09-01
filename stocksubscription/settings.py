@@ -48,6 +48,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+# Automatically append trailing slash to URLs
+APPEND_SLASH = True
+
 ROOT_URLCONF = 'stocksubscription.urls'
 
 TEMPLATES = [
