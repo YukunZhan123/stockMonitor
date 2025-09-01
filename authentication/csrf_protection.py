@@ -86,10 +86,13 @@ class CSRFProtectionMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        # Skip CSRF for specific GET endpoints that don't need protection
+        # Skip CSRF for authentication endpoints that handle their own security
         skip_paths = [
-            '/api/auth/verify/',  # GET endpoint for checking auth status
-            '/api/auth/refresh/', # POST but uses existing auth cookie
+            '/api/auth/login/',    # POST endpoint for user login
+            '/api/auth/register/', # POST endpoint for user registration  
+            '/api/auth/verify/',   # GET endpoint for checking auth status
+            '/api/auth/refresh/',  # POST endpoint for token refresh
+            '/api/auth/logout/',   # POST endpoint for logout
         ]
         
         # Only skip CSRF check for specific safe endpoints
