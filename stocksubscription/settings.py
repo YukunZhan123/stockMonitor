@@ -185,9 +185,9 @@ CELERY_TIMEZONE = TIME_ZONE
 # Celery Beat Schedule for automatic tasks
 from celery.schedules import crontab
 CELERY_BEAT_SCHEDULE = {
-    'send-hourly-notifications': {
+    'send-minute-notifications': {
         'task': 'subscriptions.tasks.send_periodic_notifications',
-        'schedule': crontab(minute=0),  # Every hour at the top of the hour
+        'schedule': crontab(minute='*'),  # Every minute of every day
     },
 }
 
