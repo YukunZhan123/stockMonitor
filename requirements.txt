@@ -12,3 +12,4 @@ gunicorn==21.2.0
 requests
 dj-database-url
 django-celery-beat
+pytz
