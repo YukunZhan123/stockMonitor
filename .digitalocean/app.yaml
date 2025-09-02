@@ -109,13 +109,13 @@ services:
         scope: RUN_TIME
         type: SECRET
 
-  # Celery Beat for Scheduled Tasks
-  - name: scheduler
+  # Notification Scheduler Service
+  - name: notification-scheduler
     source_dir: /
     github:
       repo: YukunZhan123/stockMonitor
       branch: main
-    run_command: celery -A stocksubscription beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    run_command: python notification_scheduler.py
     environment_slug: python
     instance_count: 1
     instance_size_slug: basic-xxs
@@ -132,6 +132,16 @@ services:
       - key: DATABASE_URL
         value: "${stocksubscription-db.DATABASE_URL}"
         scope: RUN_TIME
+      - key: EMAIL_HOST_USER
+        value: "yukunzhan123@gmail.com"
+        scope: RUN_TIME
+      - key: EMAIL_HOST_PASSWORD
+        value: "todkpfywwxksutsl"
+        scope: RUN_TIME
+        type: SECRET
+      - key: OPENAI_API_KEY
+        scope: RUN_TIME
+        type: SECRET
 
 databases:
   - engine: PG
