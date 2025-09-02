@@ -32,7 +32,6 @@ THIRD_PARTY_APPS = [
     'rest_framework',
     'corsheaders',
     'django_extensions',
-    'django_celery_beat',
 ]
 
 LOCAL_APPS = [
@@ -181,23 +180,6 @@ if DEBUG:
     CSRF_COOKIE_HTTPONLY = False  # Allow frontend to read CSRF cookie for API calls
     CSRF_USE_SESSIONS = False
 
-# Celery Configuration (Redis as broker)
-CELERY_BROKER_URL = 'django-db'
-CELERY_RESULT_BACKEND = 'django-db'
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TIMEZONE = TIME_ZONE
-
-# Celery Beat Schedule for automatic tasks
-from celery.schedules import crontab
-CELERY_BEAT_SCHEDULE = {
-    'send-minute-notifications': {
-        'task': 'subscriptions.tasks.send_periodic_notifications',
-        'schedule': crontab(minute='*'),  # Every minute of every day
-    },
-}
-
 # Email configuration - Gmail SMTP
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
@@ -211,10 +193,6 @@ EMAIL_FAIL_SILENTLY = not config('EMAIL_HOST_USER', default='')
 
 # Stock API and AI settings
 OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
-
-# Stock data provider API keys (optional - fallback to mock data for development)
-ALPHA_VANTAGE_API_KEY = config('ALPHA_VANTAGE_API_KEY', default=None)
-FINNHUB_API_KEY = config('FINNHUB_API_KEY', default=None)
 
 # Email notification settings
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@stockmonitor.com')

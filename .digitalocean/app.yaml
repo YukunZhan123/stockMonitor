@@ -75,39 +75,6 @@ services:
         value: "https://${APP_DOMAIN}/api"
         scope: BUILD_TIME
 
-  # Celery Worker for Background Tasks
-  - name: worker
-    source_dir: /
-    github:
-      repo: YukunZhan123/stockMonitor
-      branch: main
-    run_command: celery -A stocksubscription worker --loglevel=info
-    environment_slug: python
-    instance_count: 1
-    instance_size_slug: basic-xxs
-    envs:
-      - key: SECRET_KEY
-        scope: RUN_AND_BUILD_TIME
-        type: SECRET
-      - key: DEBUG
-        value: "False"
-        scope: RUN_AND_BUILD_TIME
-      - key: DJANGO_SETTINGS_MODULE
-        value: "stocksubscription.settings"
-        scope: RUN_AND_BUILD_TIME
-      - key: DATABASE_URL
-        value: "${stocksubscription-db.DATABASE_URL}"
-        scope: RUN_TIME
-      - key: OPENAI_API_KEY
-        scope: RUN_TIME
-        type: SECRET
-      - key: EMAIL_HOST_USER
-        value: "yukunzhan123@gmail.com"
-        scope: RUN_TIME
-      - key: EMAIL_HOST_PASSWORD
-        value: "todkpfywwxksutsl"
-        scope: RUN_TIME
-        type: SECRET
 
   # Notification Scheduler Service
   - name: notification-scheduler
@@ -159,6 +126,7 @@ jobs:
     run_command: |
       python manage.py collectstatic --noinput
       python manage.py migrate
+      python manage.py setup_periodic_task
     environment_slug: python
     instance_size_slug: basic-xxs
     kind: PRE_DEPLOY
