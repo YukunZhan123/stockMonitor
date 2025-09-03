@@ -14,6 +14,6 @@ urlpatterns = [
     # Manual send-now endpoint (workaround for router issue)
     path('<uuid:pk>/send-now/', views.send_now_view, name='subscription-send-now'),
     
-    # Additional utility endpoints
-    path('trigger-periodic/', views.trigger_periodic_notifications, name='trigger-periodic'),
+    # Additional utility endpoints (ViewSet actions handle most endpoints)
+    path('webhook/trigger-notifications/', views.trigger_notifications_webhook, name='trigger-webhook'),
 ]

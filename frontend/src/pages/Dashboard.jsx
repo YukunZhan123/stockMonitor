@@ -13,6 +13,8 @@ export default function Dashboard({ user, onLogout }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [viewMode, setViewMode] = useState("grid"); // Start with grid for all users
   const [refreshingPrices, setRefreshingPrices] = useState(false);
+  const [triggeringNotifications, setTriggeringNotifications] = useState(false);
+  const [notificationResult, setNotificationResult] = useState(null);
   const isAdmin = user?.is_staff;
 
   const {
@@ -69,6 +71,31 @@ export default function Dashboard({ user, onLogout }) {
     }
   };
 
+  const handleTriggerNotifications = async () => {
+    setTriggeringNotifications(true);
+    setNotificationResult(null);
+    try {
+      const response = await subscriptionAPI.triggerNotifications();
+      const result = response.data;
+      setNotificationResult({
+        success: true,
+        message: result.message,
+        output: result.output
+      });
+      setError(null);
+    } catch (error) {
+      console.error('Trigger notifications error:', error);
+      console.error('Error response:', error.response?.data);
+      setNotificationResult({
+        success: false,
+        message: error.response?.data?.error || error.response?.data?.details || error.message || "Failed to trigger notifications"
+      });
+      setError("Failed to trigger notifications. Please try again.");
+    } finally {
+      setTriggeringNotifications(false);
+    }
+  };
+
   const headerActions = (
     <>
       <button
@@ -99,6 +126,36 @@ export default function Dashboard({ user, onLogout }) {
         )}
         <span>{refreshingPrices ? "Refreshing..." : "Refresh Prices"}</span>
       </button>
+      {isAdmin && (
+        <button
+          onClick={handleTriggerNotifications}
+          disabled={triggeringNotifications}
+          className="rounded-md bg-yellow-500/20 px-3 py-1.5 text-sm font-semibold text-yellow-300 hover:bg-yellow-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+        >
+          {triggeringNotifications && (
+            <svg
+              className="animate-spin -ml-1 mr-2 h-4 w-4 text-yellow-300"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+          )}
+          <span>{triggeringNotifications ? "Sending..." : "🔔 Send Notifications"}</span>
+        </button>
+      )}
       <button
         onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
         className="rounded-md bg-blue-500/20 px-3 py-1.5 text-sm font-semibold text-blue-300 hover:bg-blue-500/30"
@@ -118,6 +175,40 @@ export default function Dashboard({ user, onLogout }) {
       error={error}
     >
       {isAdmin && <TestError />}
+      
+      {/* Notification Result Display */}
+      {notificationResult && (
+        <div className={`mb-6 rounded-lg p-4 border ${
+          notificationResult.success 
+            ? 'bg-green-500/10 border-green-500/30 text-green-300'
+            : 'bg-red-500/10 border-red-500/30 text-red-300'
+        }`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold">
+                {notificationResult.success ? '✅ Notifications Sent!' : '❌ Notification Failed'}
+              </h3>
+              <p className="text-sm mt-1">{notificationResult.message}</p>
+            </div>
+            <button 
+              onClick={() => setNotificationResult(null)}
+              className="text-gray-400 hover:text-gray-300"
+            >
+              ×
+            </button>
+          </div>
+          {notificationResult.output && (
+            <details className="mt-3">
+              <summary className="cursor-pointer text-sm font-medium">
+                Show Details
+              </summary>
+              <pre className="text-xs mt-2 p-2 bg-black/20 rounded overflow-x-auto">
+                {notificationResult.output}
+              </pre>
+            </details>
+          )}
+        </div>
+      )}
       {loading ? (
         <LoadingSpinner message="Loading subscriptions..." />
       ) : subscriptions.length === 0 ? (

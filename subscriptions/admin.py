@@ -1,12 +1,17 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.utils import timezone
+from django.http import HttpResponseRedirect
+from django.urls import path, reverse
+from django.contrib import messages
+from django.shortcuts import render
 from .models import StockSubscription, NotificationLog
 
 
 @admin.register(StockSubscription)
 class StockSubscriptionAdmin(admin.ModelAdmin):
     """Admin interface for stock subscriptions"""
+    
     
     list_display = [
         'stock_ticker', 'username_display', 'user_email_display', 'email', 'current_price_display', 
@@ -64,7 +69,7 @@ class StockSubscriptionAdmin(admin.ModelAdmin):
     last_notification_display.short_description = 'Last Notification'
     last_notification_display.admin_order_field = 'last_notification_sent'
     
-    actions = ['activate_subscriptions', 'deactivate_subscriptions', 'refresh_prices']
+    actions = ['activate_subscriptions', 'deactivate_subscriptions', 'refresh_prices', 'trigger_notifications_now']
     
     def activate_subscriptions(self, request, queryset):
         updated = queryset.update(is_active=True)
@@ -112,6 +117,31 @@ class StockSubscriptionAdmin(admin.ModelAdmin):
         
         self.message_user(request, f'Refreshed prices for {updated} subscriptions.')
     refresh_prices.short_description = 'Refresh stock prices'
+    
+    def trigger_notifications_now(self, request, queryset):
+        """Trigger notifications immediately for all active subscriptions"""
+        try:
+            from django.core.management import call_command
+            import io
+            
+            # Capture the output of the management command
+            output = io.StringIO()
+            call_command('send_notifications', stdout=output)
+            result = output.getvalue()
+            
+            # Parse the result to get counts
+            lines = result.strip().split('\n')
+            summary_line = [line for line in lines if 'Notification run completed:' in line]
+            
+            if summary_line:
+                self.message_user(request, f'✅ Notifications triggered successfully! {summary_line[0]}', messages.SUCCESS)
+            else:
+                self.message_user(request, f'✅ Notifications triggered successfully!', messages.SUCCESS)
+                
+        except Exception as e:
+            self.message_user(request, f'❌ Failed to trigger notifications: {str(e)}', messages.ERROR)
+    
+    trigger_notifications_now.short_description = '🔔 Trigger notifications now (all users)'
 
 
 @admin.register(NotificationLog)

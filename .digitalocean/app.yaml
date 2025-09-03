@@ -76,40 +76,6 @@ services:
         scope: BUILD_TIME
 
 
-  # Notification Scheduler Service
-  - name: notification-scheduler
-    source_dir: /
-    github:
-      repo: YukunZhan123/stockMonitor
-      branch: main
-    run_command: python notification_scheduler.py
-    environment_slug: python
-    instance_count: 1
-    instance_size_slug: basic-xxs
-    envs:
-      - key: SECRET_KEY
-        scope: RUN_AND_BUILD_TIME
-        type: SECRET
-      - key: DEBUG
-        value: "False"
-        scope: RUN_AND_BUILD_TIME
-      - key: DJANGO_SETTINGS_MODULE
-        value: "stocksubscription.settings"
-        scope: RUN_AND_BUILD_TIME
-      - key: DATABASE_URL
-        value: "${stocksubscription-db.DATABASE_URL}"
-        scope: RUN_TIME
-      - key: EMAIL_HOST_USER
-        value: "yukunzhan123@gmail.com"
-        scope: RUN_TIME
-      - key: EMAIL_HOST_PASSWORD
-        value: "todkpfywwxksutsl"
-        scope: RUN_TIME
-        type: SECRET
-      - key: OPENAI_API_KEY
-        scope: RUN_TIME
-        type: SECRET
-
 databases:
   - engine: PG
     name: stocksubscription-db

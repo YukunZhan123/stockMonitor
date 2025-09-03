@@ -187,6 +187,47 @@ class StockSubscriptionViewSet(ModelViewSet):
             'total_subscriptions': subscriptions.count(),
             'updated_count': updated_count
         })
+    
+    @action(detail=False, methods=['post'])
+    def trigger_notifications(self, request):
+        """Start the notification scheduler that runs continuously (admin only)"""
+        # Only allow admin users to trigger this
+        if not request.user.is_staff:
+            return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+        
+        try:
+            # Start the scheduler in a background thread that runs forever
+            from subscriptions.scheduler import start_notification_scheduler
+            import threading
+            
+            # Check if scheduler is already running
+            for thread in threading.enumerate():
+                if thread.name == 'notification-scheduler':
+                    return Response({
+                        'message': 'Notification scheduler is already running',
+                        'status': 'already_running'
+                    })
+            
+            # Start scheduler in daemon thread
+            scheduler_thread = threading.Thread(
+                target=start_notification_scheduler, 
+                daemon=True,
+                name='notification-scheduler'
+            )
+            scheduler_thread.start()
+            
+            return Response({
+                'message': 'Notification scheduler started successfully - will run every 5 minutes',
+                'status': 'started',
+                'triggered_by': request.user.email
+            })
+            
+        except Exception as e:
+            logger.error(f"Failed to start notification scheduler: {str(e)}")
+            return Response({
+                'error': 'Failed to start notification scheduler',
+                'details': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class NotificationLogViewSet(ModelViewSet):
@@ -289,29 +330,50 @@ def send_now_view(request, pk):
 # Legacy function-based views for specific endpoints
 
 
-@api_view(['POST'])
-@permission_classes([permissions.IsAuthenticated])
-@handle_view_errors
-def trigger_periodic_notifications(request):
-    """Manually trigger periodic notifications (for testing)"""
-    # Only allow admin users to trigger this
-    if not request.user.is_staff:
-        return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+
+# Public webhook endpoint (no authentication required)
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+
+@csrf_exempt
+@require_http_methods(["POST", "OPTIONS"])
+def trigger_notifications_webhook(request):
+    """
+    Public webhook to trigger notifications - can be called by external schedulers
+    No authentication required - use this for cron services or external triggers
+    """
+    # Handle CORS preflight request
+    if request.method == 'OPTIONS':
+        response = JsonResponse({})
+        response['Access-Control-Allow-Origin'] = '*'
+        response['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        response['Access-Control-Allow-Headers'] = 'Content-Type, X-Requested-With'
+        return response
     
     try:
-        from .tasks import send_periodic_notifications
+        from django.core.management import call_command
+        import io
         
-        # Run the task synchronously for immediate feedback
-        result = send_periodic_notifications()
+        # Capture the output of the management command
+        output = io.StringIO()
+        call_command('send_notifications', stdout=output)
+        result = output.getvalue()
         
-        return Response({
-            'message': 'Periodic notifications triggered successfully',
-            'result': result
+        response = JsonResponse({
+            'status': 'success',
+            'message': 'Notifications triggered successfully',
+            'output': result
         })
+        response['Access-Control-Allow-Origin'] = '*'
+        return response
         
     except Exception as e:
-        logger.error(f"Manual trigger of periodic notifications failed: {str(e)}")
-        return Response({
-            'error': 'Failed to trigger periodic notifications',
-            'details': str(e)
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logger.error(f"Webhook trigger failed: {str(e)}")
+        response = JsonResponse({
+            'status': 'error', 
+            'message': str(e)
+        }, status=500)
+        response['Access-Control-Allow-Origin'] = '*'
+        return response

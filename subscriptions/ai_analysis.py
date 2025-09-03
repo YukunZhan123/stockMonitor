@@ -68,17 +68,17 @@ You are a financial analyst. Provide a brief investment recommendation for {stoc
 
 Respond with ONLY:
 1. One word: BUY, SELL, or HOLD
-2. A concise reason (max 40 words explaining key factors)
+2. A concise reason (max 25 words - must be complete sentence)
 
 Format your response exactly as:
 RECOMMENDATION: [BUY/SELL/HOLD]
-REASON: [detailed reasoning including market conditions, fundamentals, or technical factors]
+REASON: [complete reasoning in 25 words or less]
 
 Example:
 RECOMMENDATION: BUY
-REASON: Strong quarterly earnings beat expectations, expanding market share in key sectors, and positive analyst sentiment with growing revenue streams
+REASON: Strong earnings growth, expanding market share, and positive industry outlook support upward momentum.
 
-Be professional and specific. Consider current market conditions, company fundamentals, recent performance, and industry trends.
+Be professional and specific. Keep the reason under 25 words and make it a complete thought.
 """
 
             # Make API call to OpenAI - optimized for lowest cost
@@ -87,7 +87,7 @@ Be professional and specific. Consider current market conditions, company fundam
                 messages=[
                     {"role": "user", "content": prompt}  # Removed system message to save tokens
                 ],
-                max_tokens=80,  # Increased for longer reasoning (40 words ~60 tokens)
+                max_tokens=60,  # Small response - just recommendation + 25 words
                 temperature=0.1  # Lower temperature for more consistent/cheaper responses
             )
             
@@ -136,9 +136,8 @@ Be professional and specific. Consider current market conditions, company fundam
                 elif line.startswith('REASON:'):
                     reason = line.split(':', 1)[1].strip()
             
-            # Ensure reason is not too long
-            if len(reason) > 120:
-                reason = reason[:117] + '...'
+            # Don't truncate - AI should provide complete short response
+            # If response is too long, it means AI didn't follow instructions
             
             return {
                 'recommendation': recommendation,

@@ -179,6 +179,9 @@ export const subscriptionAPI = {
 
   // Refresh stock prices for user's subscriptions
   refreshPrices: () => api.post("/subscriptions/refresh_prices/"),
+
+  // Start notification scheduler (admin only)
+  triggerNotifications: () => api.post("/subscriptions/trigger_notifications/"),
 };
 
 export default api;

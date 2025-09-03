@@ -54,11 +54,12 @@ class Command(BaseCommand):
             total_sent = 0
             total_errors = 0
             
-            # Process each user's subscriptions
+            # Process each user's subscriptions (ONE EMAIL PER USER)
             for user_email, user_subs in user_subscriptions.items():
+                user_sent_count = 0
                 try:
                     if dry_run:
-                        self.stdout.write(f'[DRY RUN] Would send notifications to {user_email} for {len(user_subs)} stocks')
+                        self.stdout.write(f'[DRY RUN] Would send merged notification to {user_email} for {len(user_subs)} stocks')
                         continue
                     
                     # Update stock prices for user's subscriptions
@@ -77,10 +78,7 @@ class Command(BaseCommand):
                             subscription.updated_at = timezone.now()
                             subscription.save(update_fields=['stock_price', 'updated_at'])
                             
-                            updated_stocks.append({
-                                'subscription': subscription,
-                                'stock_data': {'price': current_price, 'ticker': subscription.stock_ticker}
-                            })
+                            updated_stocks.append(subscription)
                             
                         except Exception as e:
                             logger.error(f"Failed to update stock {subscription.stock_ticker}: {str(e)}")
@@ -90,32 +88,21 @@ class Command(BaseCommand):
                     if not updated_stocks:
                         continue
                     
-                    # Send individual notifications for each stock
-                    user_sent_count = 0
-                    for stock_info in updated_stocks:
-                        try:
-                            # Send notification for this specific stock
-                            log_entry = notification_service.send_stock_notification(
-                                subscription=stock_info['subscription'],
-                                notification_type='periodic'
-                            )
-                            
-                            if log_entry and log_entry.status == 'sent':
-                                user_sent_count += 1
-                            else:
-                                total_errors += 1
-                                self.stdout.write(
-                                    self.style.ERROR(f'✗ Failed to send {stock_info["subscription"].stock_ticker} notification to {user_email}')
-                                )
-                                
-                        except Exception as e:
-                            total_errors += 1
-                            logger.error(f"Failed to send notification for {stock_info['subscription'].stock_ticker}: {str(e)}")
+                    # Send ONE merged notification for all user's stocks
+                    log_entry = notification_service.send_merged_notification(
+                        subscriptions=updated_stocks,
+                        notification_type='periodic'
+                    )
                     
-                    if user_sent_count > 0:
-                        total_sent += user_sent_count
+                    if log_entry and log_entry.status == 'sent':
+                        total_sent += 1  # Count emails sent, not stocks
                         self.stdout.write(
-                            self.style.SUCCESS(f'✓ Sent {user_sent_count} notifications to {user_email}')
+                            self.style.SUCCESS(f'✓ Sent 1 merged email with {len(updated_stocks)} stocks to {user_email}')
+                        )
+                    else:
+                        total_errors += 1
+                        self.stdout.write(
+                            self.style.ERROR(f'✗ Failed to send merged notification to {user_email}')
                         )
                 
                 except Exception as e:
