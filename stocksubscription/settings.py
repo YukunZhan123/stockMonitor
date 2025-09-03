@@ -18,13 +18,11 @@ DEBUG = config('DEBUG', default=False, cast=bool)  # Default to False for securi
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,testserver', cast=lambda v: [s.strip() for s in v.split(',')])
 
 # Application definition
-# Django apps with admin enabled
+# Django apps (admin interface removed)
 DJANGO_APPS = [
-    'django.contrib.admin',          # Admin interface
     'django.contrib.auth',           # User model only
     'django.contrib.contenttypes',   # Required by auth
-    'django.contrib.sessions',       # Required by admin
-    'django.contrib.messages',       # Required by admin
+    'django.contrib.sessions',       # Required by auth middleware
     'django.contrib.staticfiles',    # Static files
 ]
 
@@ -41,7 +39,7 @@ LOCAL_APPS = [
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
-# Middleware with admin support
+# Middleware (admin interface removed, but sessions kept for auth)
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
@@ -49,7 +47,6 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
