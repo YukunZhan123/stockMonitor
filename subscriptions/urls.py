@@ -10,7 +10,4 @@ router.register(r'logs', views.NotificationLogViewSet, basename='notificationlog
 urlpatterns = [
     # ViewSet routes (CRUD operations and actions)
     path('', include(router.urls)),
-    
-    # Webhook endpoint (no authentication required)
-    path('webhook/trigger-notifications/', views.trigger_notifications_webhook, name='trigger-webhook'),
 ]
