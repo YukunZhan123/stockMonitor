@@ -8,12 +8,9 @@ router.register(r'', views.StockSubscriptionViewSet, basename='stocksubscription
 router.register(r'logs', views.NotificationLogViewSet, basename='notificationlog')
 
 urlpatterns = [
-    # ViewSet routes (CRUD operations)
+    # ViewSet routes (CRUD operations and actions)
     path('', include(router.urls)),
     
-    # Manual send-now endpoint (workaround for router issue)
-    path('<uuid:pk>/send-now/', views.send_now_view, name='subscription-send-now'),
-    
-    # Additional utility endpoints (ViewSet actions handle most endpoints)
+    # Webhook endpoint (no authentication required)
     path('webhook/trigger-notifications/', views.trigger_notifications_webhook, name='trigger-webhook'),
 ]

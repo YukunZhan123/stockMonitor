@@ -186,6 +186,40 @@ class StockSubscriptionViewSet(ModelViewSet):
             'updated_count': updated_count
         })
     
+    @action(detail=True, methods=['post'])
+    def send_now(self, request, pk=None):
+        """Send notification immediately for specific subscription"""
+        subscription = self.get_object()  # Automatic permission filtering
+        
+        logger.info(f"Manual notification requested for subscription {subscription.id}")
+        
+        # Get optional custom message
+        custom_message = request.data.get('message', None)
+        
+        try:
+            # Send notification (price fetching now handled in send_stock_notification)
+            notification_service = NotificationService()
+            
+            notification_log = notification_service.send_stock_notification(
+                subscription=subscription,
+                notification_type='manual',
+                custom_message=custom_message
+            )
+            
+            return Response({
+                'message': 'Notification sent successfully',
+                'notification_id': notification_log.id,
+                'stock_price': str(subscription.stock_price) if subscription.stock_price else None,
+                'sent_to': subscription.email
+            })
+            
+        except Exception as e:
+            logger.error(f"Failed to send notification for {subscription.id}: {str(e)}")
+            return Response({
+                'error': 'Failed to send notification',
+                'details': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
     @action(detail=False, methods=['post'])
     def trigger_notifications(self, request):
         """Start the notification scheduler that runs continuously (admin only)"""
@@ -273,62 +307,6 @@ class NotificationLogViewSet(ModelViewSet):
 
 
 # Manual send-now endpoint (workaround for DRF action routing issue)
-@api_view(['POST'])
-@permission_classes([permissions.IsAuthenticated])
-@handle_view_errors
-def send_now_view(request, pk):
-    """Send notification immediately for specific subscription"""
-    try:
-        if request.user.is_staff:
-            # Admin users can send notifications for any subscription
-            subscription = StockSubscription.objects.get(pk=pk)
-        else:
-            # Regular users can only send notifications for their own subscriptions
-            subscription = StockSubscription.objects.get(pk=pk, user=request.user)
-    except StockSubscription.DoesNotExist:
-        return Response({'error': 'Subscription not found'}, status=status.HTTP_404_NOT_FOUND)
-    
-    logger.info(f"Manual notification requested for subscription {subscription.id}")
-    
-    # Get optional custom message
-    custom_message = request.data.get('message', None)
-    
-    try:
-        # Update stock price first
-        stock_service = StockDataService()
-        current_price = stock_service.get_current_price(subscription.stock_ticker)
-        if current_price:
-            subscription.stock_price = current_price
-            subscription.save(update_fields=['stock_price', 'updated_at'])
-        
-        # Send notification
-        notification_service = NotificationService()
-        
-        notification_log = notification_service.send_stock_notification(
-            subscription=subscription,
-            notification_type='manual',
-            custom_message=custom_message
-        )
-        
-        return Response({
-            'message': 'Notification sent successfully',
-            'notification_id': notification_log.id,
-            'stock_price': str(subscription.stock_price) if subscription.stock_price else None,
-            'sent_to': subscription.email
-        })
-        
-    except Exception as e:
-        logger.error(f"Failed to send notification for {subscription.id}: {str(e)}")
-        return Response({
-            'error': 'Failed to send notification',
-            'details': str(e)
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-# Legacy function-based views for specific endpoints
-
-
-
 
 # Public webhook endpoint (no authentication required)
 from django.views.decorators.csrf import csrf_exempt
@@ -339,7 +317,6 @@ from django.views.decorators.http import require_http_methods
 @require_http_methods(["POST", "OPTIONS"])
 def trigger_notifications_webhook(request):
     """
-    Public webhook to trigger notifications - can be called by external schedulers
     No authentication required - use this for cron services or external triggers
     """
     # Handle CORS preflight request

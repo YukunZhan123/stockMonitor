@@ -124,6 +124,16 @@ class NotificationService:
         Returns NotificationLog instance with send status
         """
         
+        # Fetch current price for accurate notifications
+        stock_service = StockDataService()
+        current_price = stock_service.get_current_price(subscription.stock_ticker)
+        
+        # Use fresh price if available, fallback to DB price
+        if current_price is not None:
+            # Update subscription with latest price
+            subscription.stock_price = current_price
+            subscription.save(update_fields=['stock_price', 'updated_at'])
+        
         # Create notification log entry
         notification_log = NotificationLog.objects.create(
             subscription=subscription,

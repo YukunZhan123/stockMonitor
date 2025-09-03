@@ -172,7 +172,7 @@ export const subscriptionAPI = {
   deleteSubscription: (id) => api.delete(`/subscriptions/${id}/`),
 
   // Send email now for specific subscription
-  sendNow: (id) => api.post(`/subscriptions/${id}/send-now/`),
+  sendNow: (id) => api.post(`/subscriptions/${id}/send_now/`),
 
   // Get subscription by ID (if needed)
   getSubscription: (id) => api.get(`/subscriptions/${id}/`),
