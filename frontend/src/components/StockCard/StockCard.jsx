@@ -54,7 +54,7 @@ export default function StockCard({
             )}
             {onDelete && (
               <button
-                onClick={() => onDelete(subscription.id)}
+                onClick={() => onDelete(subscription)}
                 className="rounded-md bg-red-500/20 px-2 py-1 text-xs font-medium text-red-300 hover:bg-red-500/30"
               >
                 Delete

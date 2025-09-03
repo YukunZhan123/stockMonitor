@@ -4,6 +4,7 @@ import StockCard from "../components/StockCard/StockCard";
 import LoadingSpinner from "../components/UI/LoadingSpinner";
 import EmptyState from "../components/UI/EmptyState";
 import Pagination from "../components/UI/Pagination";
+import ConfirmationModal from "../components/UI/ConfirmationModal";
 import AddSubscriptionModal from "../components/AddSubscriptionModal/AddSubscriptionModal";
 import useSubscriptions from "../hooks/useSubscriptions";
 import { subscriptionAPI } from "../services/api";
@@ -14,6 +15,7 @@ export default function Dashboard({ user, onLogout }) {
   const [refreshingPrices, setRefreshingPrices] = useState(false);
   const [triggeringNotifications, setTriggeringNotifications] = useState(false);
   const [notificationResult, setNotificationResult] = useState(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState(null); // { id, ticker }
   const isAdmin = user?.is_staff;
 
   const {
@@ -38,14 +40,20 @@ export default function Dashboard({ user, onLogout }) {
     setShowAddForm(false);
   };
 
-  const handleDeleteSubscription = async (id) => {
-    if (
-      isAdmin &&
-      !confirm("Are you sure you want to delete this subscription?")
-    ) {
-      return;
+  const handleDeleteSubscription = async (subscription) => {
+    // For regular users, show confirmation. For admins, always show confirmation
+    setDeleteConfirmation({
+      id: subscription.id,
+      ticker: subscription.stock_ticker,
+      email: subscription.email
+    });
+  };
+
+  const confirmDeleteSubscription = async () => {
+    if (deleteConfirmation) {
+      await deleteSubscription(deleteConfirmation.id);
+      setDeleteConfirmation(null);
     }
-    await deleteSubscription(id);
   };
 
   const handleSendNow = async (subscription) => {
@@ -303,7 +311,7 @@ export default function Dashboard({ user, onLogout }) {
                       )}
                       <button
                         onClick={() =>
-                          handleDeleteSubscription(subscription.id)
+                          handleDeleteSubscription(subscription)
                         }
                         className="rounded-md bg-red-500/20 px-3 py-1.5 text-sm font-medium text-red-300 hover:bg-red-500/30"
                       >
@@ -336,6 +344,22 @@ export default function Dashboard({ user, onLogout }) {
           onAdd={handleAddSubscription}
         />
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={!!deleteConfirmation}
+        onClose={() => setDeleteConfirmation(null)}
+        onConfirm={confirmDeleteSubscription}
+        type="danger"
+        title="Delete Subscription"
+        message={
+          deleteConfirmation ? 
+          `Are you sure you want to delete the ${deleteConfirmation.ticker} subscription for ${deleteConfirmation.email}? This action cannot be undone.` :
+          ''
+        }
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </PageLayout>
   );
 }

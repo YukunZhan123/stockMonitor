@@ -55,8 +55,25 @@ export default function useSubscriptions({
   const deleteSubscription = async (id) => {
     try {
       await subscriptionAPI.deleteSubscription(id);
+      
+      // Remove from local state
       setSubscriptions((prev) => prev.filter((sub) => sub.id !== id));
       setTotalCount((prev) => prev - 1);
+      
+      // Handle pagination edge case: if current page becomes empty, go to previous page
+      const newTotalCount = totalCount - 1;
+      const newTotalPages = Math.ceil(newTotalCount / itemsPerPage);
+      
+      if (currentPage > newTotalPages && newTotalPages > 0) {
+        setCurrentPage(newTotalPages);
+      } else if (subscriptions.length === 1 && currentPage > 1) {
+        // If this was the last item on the current page (and not page 1), go to previous page
+        setCurrentPage(currentPage - 1);
+      } else {
+        // Refresh current page to fill empty slots
+        setTimeout(() => loadSubscriptions(), 100);
+      }
+      
       setError(null); // Clear any previous errors
     } catch (error) {
       // Error is already logged by API interceptor, just handle user feedback
