@@ -257,7 +257,7 @@ export default function Dashboard({ user, onLogout }) {
                   key={subscription.id}
                   subscription={subscription}
                   onDelete={handleDeleteSubscription}
-                  onSendNow={isAdmin ? null : handleSendNow} // No send now for admin in grid
+                  onSendNow={handleSendNow} // Send now available for all users
                   isAdmin={isAdmin}
                 />
               ))}
@@ -301,14 +301,12 @@ export default function Dashboard({ user, onLogout }) {
                       </div>
                     </div>
                     <div className="flex space-x-2">
-                      {!isAdmin && (
-                        <button
-                          onClick={() => handleSendNow(subscription)}
-                          className="rounded-md bg-indigo-500/20 px-3 py-1.5 text-sm font-medium text-indigo-300 hover:bg-indigo-500/30"
-                        >
-                          Send Now
-                        </button>
-                      )}
+                      <button
+                        onClick={() => handleSendNow(subscription)}
+                        className="rounded-md bg-indigo-500/20 px-3 py-1.5 text-sm font-medium text-indigo-300 hover:bg-indigo-500/30"
+                      >
+                        Send Now
+                      </button>
                       <button
                         onClick={() =>
                           handleDeleteSubscription(subscription)
