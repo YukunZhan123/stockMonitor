@@ -62,17 +62,21 @@ def run_notifications():
 def start_notification_scheduler():
     """Main scheduler function - called from Django app startup"""
     logger.info("Notification scheduler starting as Django background service...")
-    logger.info("Schedule: Every 5 minutes, every day")
+    logger.info("Schedule: Every hour, Monday-Friday 9AM-5PM ET")
     
     while True:
         try:
-            # Always run (every minute, every day)
+            # Check business hours before running
             is_business, time_info = is_business_hours()
-            logger.info(f"[OK] {time_info} - Running notifications")
-            run_notifications()
             
-            # Sleep for 5 minutes before next run
-            time.sleep(300)  # 5 minutes
+            if is_business:
+                logger.info(f"[OK] {time_info} - Running notifications")
+                run_notifications()
+            else:
+                logger.info(f"[SKIP] {time_info} - Skipping notifications")
+            
+            # Sleep for 1 hour before next run
+            time.sleep(3600)  # 1 hour
             
         except Exception as e:
             logger.error(f"[ERROR] Unexpected error in scheduler: {str(e)}")

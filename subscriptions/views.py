@@ -215,7 +215,7 @@ class StockSubscriptionViewSet(ModelViewSet):
             scheduler_thread.start()
             
             return Response({
-                'message': 'Notification scheduler started successfully - will run every 5 minutes',
+                'message': 'Notification scheduler started successfully - will run every hour during business hours (Mon-Fri, 9AM-5PM ET)',
                 'status': 'started',
                 'triggered_by': request.user.email
             })
