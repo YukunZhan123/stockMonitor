@@ -21,9 +21,19 @@ logger = logging.getLogger(__name__)
 EASTERN_TZ = pytz.timezone('US/Eastern')
 
 def is_business_hours():
-    """Always return True - running every minute, every day"""
+    """Check if current time is within business hours (Mon-Fri, 9AM-5PM ET)"""
     now_et = datetime.now(EASTERN_TZ)
-    return True, f"Running - {now_et.strftime('%A %I:%M %p %Z')}"
+    
+    # Check if it's a weekday (0=Monday, 6=Sunday)
+    if now_et.weekday() >= 5:  # Saturday or Sunday
+        return False, f"Weekend - {now_et.strftime('%A')}"
+    
+    # Check if it's between 9 AM and 5 PM
+    hour = now_et.hour
+    if hour < 9 or hour >= 17:  # Before 9 AM or after 5 PM
+        return False, f"Outside hours - {now_et.strftime('%I:%M %p %Z')}"
+    
+    return True, f"Business hours - {now_et.strftime('%A %I:%M %p %Z')}"
 
 def run_notifications():
     """Run the Django management command"""

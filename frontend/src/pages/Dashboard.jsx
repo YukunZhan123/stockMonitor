@@ -7,7 +7,6 @@ import Pagination from "../components/UI/Pagination";
 import AddSubscriptionModal from "../components/AddSubscriptionModal/AddSubscriptionModal";
 import useSubscriptions from "../hooks/useSubscriptions";
 import { subscriptionAPI } from "../services/api";
-import TestError from "../components/TestError"; // TEMPORARY FOR TESTING
 
 export default function Dashboard({ user, onLogout }) {
   const [showAddForm, setShowAddForm] = useState(false);
@@ -174,7 +173,6 @@ export default function Dashboard({ user, onLogout }) {
       headerActions={headerActions}
       error={error}
     >
-      {isAdmin && <TestError />}
       
       {/* Notification Result Display */}
       {notificationResult && (

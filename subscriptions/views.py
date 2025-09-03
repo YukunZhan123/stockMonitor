@@ -3,8 +3,6 @@ from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.pagination import PageNumberPagination
-from django.shortcuts import get_object_or_404
-from django.db.models import Q
 from django.utils import timezone
 import logging
 
